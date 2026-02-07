@@ -1,0 +1,65 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-update-the-global-balanceindicator-so-that-when-the-signed-in-user-is-an-admin-the-ui-also-shows-the-admin-wallet-balance-in-pkr-in-the-same-fixed-balance-widget-shown-on-the-index-home-page-and-wherever-balanceindicator-is-rendered-without-changing-the-existing-behavior-for-non-admin-users",
+      "featureTitle": "Update the global BalanceIndicator so that when the signed-in user is an admin, the UI also shows the Admin Wallet Balance (in PKR) in the same fixed balance widget shown on the index/home page (and wherever BalanceIndicator is rendered), without changing the existing behavior for non-admin users.",
+      "files": [
+        "frontend/src/components/BalanceIndicator.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-49"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-prevent-unauthorized-admin-wallet-lookups-from-breaking-the-balanceindicator-ui-the-app-must-not-surface-an-error-state-in-balanceindicator-for-non-admin-users-due-to-calling-the-admin-wallet-api-instead-it-should-treat-admin-wallet-data-as-unavailable-and-simply-not-render-the-admin-wallet-portion-of-the-ui",
+      "featureTitle": "Prevent unauthorized admin-wallet lookups from breaking the BalanceIndicator UI: the app must not surface an error state in BalanceIndicator for non-admin users due to calling the admin-wallet API; instead, it should treat admin-wallet data as unavailable and simply not render the admin-wallet portion of the UI.",
+      "files": [
+        "frontend/src/components/BalanceIndicator.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-50"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-displayed-admin-wallet-balance-in-the-balanceindicator-reflects-backend-state-motoko-adminwallet-after-a-successful-admin-to-user-distribution-the-admin-wallet-balance-shown-in-the-ui-updates-without-requiring-a-full-page-refresh",
+      "featureTitle": "Ensure the displayed Admin Wallet balance in the BalanceIndicator reflects backend state (Motoko adminWallet): after a successful admin-to-user distribution, the Admin Wallet balance shown in the UI updates without requiring a full page refresh.",
+      "files": [
+        "frontend/src/components/BalanceIndicator.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-51"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

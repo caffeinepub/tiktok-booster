@@ -1,0 +1,66 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-07T13:12:35.777Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 3,
+    "implemented": 3,
+    "items": [
+      {
+        "id": "REQ-49",
+        "summary": "Update the global BalanceIndicator so that when the signed-in user is an admin, the UI also shows the Admin Wallet Balance (in PKR) in the same fixed balance widget shown on the index/home page (and wherever BalanceIndicator is rendered), without changing the existing behavior for non-admin users.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/BalanceIndicator.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/BalanceIndicator.tsx"
+        ]
+      },
+      {
+        "id": "REQ-50",
+        "summary": "Prevent unauthorized admin-wallet lookups from breaking the BalanceIndicator UI: the app must not surface an error state in BalanceIndicator for non-admin users due to calling the admin-wallet API; instead, it should treat admin-wallet data as unavailable and simply not render the admin-wallet portion of the UI.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BalanceIndicator.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BalanceIndicator.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-51",
+        "summary": "Ensure the displayed Admin Wallet balance in the BalanceIndicator reflects backend state (Motoko adminWallet): after a successful admin-to-user distribution, the Admin Wallet balance shown in the UI updates without requiring a full page refresh.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BalanceIndicator.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BalanceIndicator.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/components/BalanceIndicator.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

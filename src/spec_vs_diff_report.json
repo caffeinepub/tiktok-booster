@@ -1,0 +1,25 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-07T13:12:35.774Z",
+  "summary": "BalanceIndicator was updated to show an additional English-labeled “Admin Wallet” balance (PKR) for authenticated admin users, and react-query hooks were added/updated to check admin status, fetch admin wallet balance only when admin, and refetch balances after distributions. One key resilience requirement is not fully met: if the admin-wallet fetch fails for an admin user, the UI still renders the admin-wallet section and falls back to showing 0 rather than treating the admin-wallet data as unavailable and hiding that section.",
+  "missing_requirements": [
+    {
+      "id": "REQ-50",
+      "requirement": "If the admin wallet fetch fails for any reason (network/actor not ready), the BalanceIndicator still renders the caller balance and the page remains usable, and it should treat admin-wallet data as unavailable and simply not render the admin-wallet portion of the UI.",
+      "reason": "The admin-wallet UI section is shown whenever `showAdminWallet` is true (authenticated and `isAdmin === true`), regardless of whether the admin wallet query errors. Additionally, `displayAdminBalance` defaults to `BigInt(0)` when `adminWalletBalance` is undefined, so on error it will still render an “Admin Wallet” section with a 0 value rather than hiding that section as “unavailable.”",
+      "evidence": [
+        "frontend/src/components/BalanceIndicator.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    }
+  ],
+  "hallucinated_features": [],
+  "confidence": 0.72,
+  "changed_files": [
+    "frontend-file-summaries.txt",
+    "frontend/src/components/BalanceIndicator.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "project_state.json"
+  ]
+}

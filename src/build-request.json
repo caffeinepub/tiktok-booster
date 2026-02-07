@@ -1,0 +1,87 @@
+{
+  "kind": "build_request",
+  "title": "Show admin wallet balance on the index (home) balance widget for admin users",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-49",
+      "text": "Update the global BalanceIndicator so that when the signed-in user is an admin, the UI also shows the Admin Wallet Balance (in PKR) in the same fixed balance widget shown on the index/home page (and wherever BalanceIndicator is rendered), without changing the existing behavior for non-admin users.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Is ko bi balance index ma add kar do ... SELECT balance FROM admin WHERE id=1 ..."
+        ]
+      },
+      "acceptanceCriteria": [
+        "When viewing the Home (index) page as a non-admin authenticated user, the BalanceIndicator continues to show only the caller balance and does not display any admin wallet information.",
+        "When viewing the Home (index) page as an unauthenticated user, the BalanceIndicator continues to show a default balance of 0 PKR and does not display any admin wallet information.",
+        "When viewing the Home (index) page as an admin user, the BalanceIndicator displays both (a) the caller balance and (b) an additional clearly labeled 'Admin Wallet' balance value in PKR.",
+        "All user-facing labels used for the admin wallet display are in English."
+      ]
+    },
+    {
+      "id": "REQ-50",
+      "text": "Prevent unauthorized admin-wallet lookups from breaking the BalanceIndicator UI: the app must not surface an error state in BalanceIndicator for non-admin users due to calling the admin-wallet API; instead, it should treat admin-wallet data as unavailable and simply not render the admin-wallet portion of the UI.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "if($admin['balance'] >= $initialBalance){ ... deduct from admin ... }"
+        ]
+      },
+      "acceptanceCriteria": [
+        "On a non-admin account, the BalanceIndicator renders normally and does not show an error message related to admin wallet authorization.",
+        "On an admin account, the BalanceIndicator successfully fetches and renders the admin wallet balance.",
+        "If the admin wallet fetch fails for any reason (network/actor not ready), the BalanceIndicator still renders the caller balance and the page remains usable."
+      ]
+    },
+    {
+      "id": "REQ-51",
+      "text": "Ensure the displayed Admin Wallet balance in the BalanceIndicator reflects backend state (Motoko adminWallet): after a successful admin-to-user distribution, the Admin Wallet balance shown in the UI updates without requiring a full page refresh.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "UPDATE admin SET balance = balance - $initialBalance WHERE id=1"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After completing an admin distribution flow in the app, the Admin Wallet balance shown in the fixed balance widget updates to the new value without a full page reload.",
+        "The admin wallet balance displayed matches the value returned by the backend getAdminWalletBalance API (no frontend-only/admin-local balance source)."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not modify files under frontend/src/components/ui (read-only UI components).",
+    "Respect the existing single-actor Motoko backend architecture; do not add additional backend services.",
+    "Use English for any user-facing text."
+  ],
+  "nonGoals": [
+    "Do not add any SQL tables, MySQL logic, or PHP code to the project (the provided snippet is behavioral reference only).",
+    "Do not change the backend authorization model beyond what is necessary to safely display admin wallet balance to admins.",
+    "Do not implement any real TikTok API or external payment integration."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [
+      "Use English for any user-facing text."
+    ],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
+  }
+}

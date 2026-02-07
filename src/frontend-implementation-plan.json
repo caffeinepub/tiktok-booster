@@ -1,0 +1,70 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Show admin wallet balance inside the global BalanceIndicator for admin users",
+  "requirements": [
+    {
+      "id": "REQ-49",
+      "summary": "Extend BalanceIndicator to additionally display an English-labeled Admin Wallet balance (PKR) for admin users only, without changing non-admin/guest behavior.",
+      "acceptanceCriteria": [
+        "When viewing the Home (index) page as a non-admin authenticated user, the BalanceIndicator continues to show only the caller balance and does not display any admin wallet information.",
+        "When viewing the Home (index) page as an unauthenticated user, the BalanceIndicator continues to show a default balance of 0 PKR and does not display any admin wallet information.",
+        "When viewing the Home (index) page as an admin user, the BalanceIndicator displays both (a) the caller balance and (b) an additional clearly labeled 'Admin Wallet' balance value in PKR.",
+        "All user-facing labels used for the admin wallet display are in English."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a React Query hook to determine whether the current authenticated caller is an admin (use the backend capability isCallerAdmin or getCallerUserRole via the actor). This enables BalanceIndicator to conditionally render admin-only wallet info. Verify the selected authorization component's frontend usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/BalanceIndicator.tsx",
+          "operation": "modify",
+          "description": "Update the fixed BalanceIndicator widget UI to show the existing caller balance unchanged for all users, and when the signed-in user is an admin, also render an additional clearly labeled 'Admin Wallet' balance (PKR) within the same widget. Use existing formatting helpers for balance display and keep all labels in English. Verify the selected shadcn-ui component usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-50",
+      "summary": "Ensure admin-wallet fetch errors/authorization issues never break BalanceIndicator for non-admin users and do not surface an error UI state in the widget.",
+      "acceptanceCriteria": [
+        "On a non-admin account, the BalanceIndicator renders normally and does not show an error message related to admin wallet authorization.",
+        "On an admin account, the BalanceIndicator successfully fetches and renders the admin wallet balance.",
+        "If the admin wallet fetch fails for any reason (network/actor not ready), the BalanceIndicator still renders the caller balance and the page remains usable."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/BalanceIndicator.tsx",
+          "operation": "modify",
+          "description": "Gate admin-wallet fetching behind the computed admin status so the admin-wallet backend capability is not called for non-admin users. When admin-wallet data is unavailable or the fetch fails, suppress any error UI in BalanceIndicator and simply omit the admin-wallet row while still rendering the caller balance. Verify the selected authorization component's frontend usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Ensure the admin-check hook is enabled only when an authenticated identity and actor are ready (avoid running role/admin checks for guests). This prevents unnecessary calls and reduces error exposure in BalanceIndicator. Verify the selected authorization component's frontend usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-51",
+      "summary": "Keep Admin Wallet balance in BalanceIndicator in sync with backend state by updating after successful admin-to-user distributions without a full page refresh.",
+      "acceptanceCriteria": [
+        "After completing an admin distribution flow in the app, the Admin Wallet balance shown in the fixed balance widget updates to the new value without a full page reload.",
+        "The admin wallet balance displayed matches the value returned by the backend getAdminWalletBalance API (no frontend-only/admin-local balance source)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/BalanceIndicator.tsx",
+          "operation": "modify",
+          "description": "Use the same React Query admin-wallet query (backed by the backend capability getAdminWalletBalance) for the Admin Wallet display so that existing query invalidations/refetches after distribution update the widget automatically, without a page reload. Verify the selected authorization component's frontend usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Confirm that the distribution mutation success handler invalidates/refetches the admin-wallet query key used by BalanceIndicator; if BalanceIndicator uses a distinct query key for admin-wallet display, also invalidate/refetch that key on successful distribution to ensure the widget updates immediately. Verify the selected authorization component's frontend usage instructions before implementing."
+        }
+      ]
+    }
+  ]
+}
