@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-a-frontend-flow-that-calls-the-new-onboarding-api-after-a-user-signs-in-internet-identity-so-new-users-automatically-receive-the-initial-10-pkr-allocation-when-available-and-returning-users-are-not-re-credited-if-onboarding-fails-due-to-insufficient-admin-funds-show-an-english-error-toast-message-and-keep-the-displayed-balances-unchanged",
-      "featureTitle": "Add a frontend flow that calls the new onboarding API after a user signs in (Internet Identity) so new users automatically receive the initial 10 PKR allocation (when available), and returning users are not re-credited. If onboarding fails due to insufficient admin funds, show an English error toast/message and keep the displayed balances unchanged.",
+      "featureId": "feature-update-the-balanceindicator-admin-wallet-display-logic-so-it-never-misleadingly-shows-0-pkr-when-the-admin-wallet-query-fails-or-is-unavailable-instead-show-a-clear-english-ui-state-e-g-admin-wallet-unavailable-or-an-error-message-for-admins-and-continue-to-hide-the-admin-wallet-section-for-non-admin-users-without-surfacing-errors",
+      "featureTitle": "Update the BalanceIndicator admin wallet display logic so it never misleadingly shows “0 PKR” when the admin wallet query fails or is unavailable; instead, show a clear English UI state (e.g., “Admin Wallet: Unavailable” or an error message) for admins, and continue to hide the admin wallet section for non-admin users without surfacing errors.",
       "files": [
-        "frontend/src/components/AppLayout.tsx",
+        "frontend/src/components/BalanceIndicator.tsx",
         "frontend/src/lib/backendError.ts"
       ],
       "components": [
@@ -17,16 +17,15 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-57"
+        "REQ-69"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-react-query-mutation-hook-for-the-onboarding-api-alongside-the-existing-wallet-hooks-and-ensure-successful-onboarding-invalidates-refetches-the-existing-balance-queries-so-balanceindicator-updates-immediately",
-      "featureTitle": "Add a React Query mutation/hook for the onboarding API alongside the existing wallet hooks, and ensure successful onboarding invalidates/refetches the existing balance queries so BalanceIndicator updates immediately.",
+      "featureId": "feature-update-the-admin-page-admin-wallet-balance-card-so-that-it-reflects-the-real-persisted-admin-wallet-balance-when-available-and-shows-a-clear-english-message-when-the-admin-wallet-balance-is-unavailable-instead-of-defaulting-to-0",
+      "featureTitle": "Update the Admin page (/admin) wallet-balance card so that it reflects the real persisted admin wallet balance when available and shows a clear English message when the admin wallet balance is unavailable (instead of defaulting to 0).",
       "files": [
-        "frontend/src/components/AppLayout.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/pages/AdminPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -37,7 +36,7 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-58"
+        "REQ-70"
       ],
       "confidence": "high"
     }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 35,
+  "projectStateVersion": 43,
   "summary": "Project now includes a wallet/balance system requirement: an admin wallet starting at 10,000 that is the sole source of user balances, with secure database persistence, real-time balance updates after transactions, and UI balance displays (wallet indicator positioned top-right under the Profile control; admin total balance in admin dashboard) in a clean, modern, mobile-friendly design.",
   "architectural_notes": [
     "Project type: Node.js Express app; serves HTML (currently via res.send) and static assets from /public.",
@@ -21,9 +21,10 @@
     "Dashboard header area (including the 'Your Site' invite URL and balance) is not visible to the user; invite URL cannot be found in the UI.",
     "Wallet/balance UI element in the top-left is not visible/noticeable for the user; needs size/style adjustments to improve discoverability/readability (especially on mobile).",
     "User-provided wallet/balance HTML snippet uses fixed top-left positioning (top:10px; left:10px), which conflicts with the requirement to place the global balance indicator top-right under the Profile control.",
-    "User provided a PHP/session-based implementation for balance display, which does not match the current Node/React/Motoko architecture; clarify/implement equivalent balance-fetching via the app’s backend/auth model."
+    "User provided a PHP/session-based implementation for balance display, which does not match the current Node/React/Motoko architecture; clarify/implement equivalent balance-fetching via the app’s backend/auth model.",
+    "Admin wallet balance is showing as 0 PKR on the home page (likely not fetching/admin-only query failing or defaulting to 0); should display the real persisted admin wallet balance for admin users."
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-create-a-marketing-style-home-page-for-the-app-named-tiktok-booster-that-includes-1-hero-title-tiktok-booster-pro-and-subtitle-instant-views-likes-followers-100-safe-2-three-package-cards-starter-5-10k-views-500-likes-24h-delivery-pro-15-50k-views-2k-likes-12h-delivery-vip-35-100k-views-5k-likes-6h-delivery-each-with-a-buy-now-cta-that-selects-the-package-3-an-order-form-section-with-a-tiktok-url-input-placeholder-https-www-tiktok-com-user-video-123456-and-a-start-boosting-button-4-a-footer-containing-a-link-to-the-credits-page-and-a-referral-share-section-showing-the-current-page-url-and-a-copy-share-earn-20-button",
@@ -400,6 +401,78 @@
         "REQ-58"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-add-a-dedicated-sign-up-page-at-route-signup-that-guides-unauthenticated-users-to-sign-in-using-internet-identity-so-they-can-create-manage-their-profile",
+      "title": "Add a dedicated Sign Up page at route \"/signup\" that guides unauthenticated users to sign in using Internet Identity so they can create/manage their profile.",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-wire-the-sign-up-flow-so-that-after-a-successful-internet-identity-login-from-signup-the-user-is-redirected-to-the-profile-page-in-a-state-that-encourages-first-time-profile-setup-i-e-editing-enabled",
+      "title": "Wire the Sign Up flow so that after a successful Internet Identity login from \"/signup\", the user is redirected to the Profile page in a state that encourages first-time profile setup (i.e., editing enabled).",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-existing-navigation-entry-points-to-make-the-new-sign-up-page-discoverable-for-unauthenticated-users-who-want-to-create-a-profile",
+      "title": "Update existing navigation entry points to make the new Sign Up page discoverable for unauthenticated users who want to create a profile.",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-whatsapp-contact-cta-that-opens-a-new-tab-to-https-wa-me-923481641187-and-is-styled-as-a-green-button-the-button-label-must-be-english-only-and-read-exactly-contact-community-add-funds-place-this-cta-in-a-globally-discoverable-location-without-obstructing-page-content-recommended-within-the-existing-fixed-top-right-balanceindicator-stack-below-the-existing-actions",
+      "title": "Add a WhatsApp contact CTA that opens a new tab to https://wa.me/923481641187 and is styled as a green button. The button label must be English-only and read exactly: \"Contact Community / Add Funds\". Place this CTA in a globally discoverable location without obstructing page content (recommended: within the existing fixed top-right BalanceIndicator stack, below the existing actions).",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-home-page-route-hero-copy-so-it-matches-the-required-marketing-messaging-keep-the-main-title-tiktok-booster-pro-and-set-the-subtitle-to-exactly-instant-views-likes-followers-100-safe-english-only",
+      "title": "Update the Home page (\"/\" route) hero copy so it matches the required marketing messaging: keep the main title \"TikTok Booster Pro\" and set the subtitle to exactly \"Instant Views • Likes • Followers | 100% Safe\" (English-only).",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-the-home-page-order-form-replace-the-current-toast-only-submission-behavior-with-the-real-mock-order-creation-flow-when-a-user-has-selected-a-package-and-submits-a-valid-tiktok-url-create-an-order-record-via-the-motoko-backend-and-then-render-the-existing-orderconfirmationpanel-with-the-created-order-id-selected-package-details-including-pkr-price-the-submitted-url-and-a-working-navigation-link-to-status-id",
+      "title": "On the Home page order form, replace the current toast-only submission behavior with the real mock order-creation flow: when a user has selected a package and submits a valid TikTok URL, create an Order record via the Motoko backend and then render the existing OrderConfirmationPanel with the created order id, selected package details (including PKR price), the submitted URL, and a working navigation link to \"/status/:id\".",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-status-page-at-route-status-id-to-fetch-the-order-by-id-from-the-backend-and-display-order-id-video-url-package-status-visually-highlighted-and-created-time-if-the-order-does-not-exist-show-an-english-order-not-found-message-and-a-link-back-to-home",
+      "title": "Update the Status page at route \"/status/:id\" to fetch the order by id from the backend and display order id, video URL, package, status (visually highlighted), and created time. If the order does not exist, show an English \"Order not found\" message and a link back to Home.",
+      "reqIds": [
+        "REQ-66"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-balanceindicator-admin-wallet-display-logic-so-it-never-misleadingly-shows-0-pkr-when-the-admin-wallet-query-fails-or-is-unavailable-instead-show-a-clear-english-ui-state-e-g-admin-wallet-unavailable-or-an-error-message-for-admins-and-continue-to-hide-the-admin-wallet-section-for-non-admin-users-without-surfacing-errors",
+      "title": "Update the BalanceIndicator admin wallet display logic so it never misleadingly shows “0 PKR” when the admin wallet query fails or is unavailable; instead, show a clear English UI state (e.g., “Admin Wallet: Unavailable” or an error message) for admins, and continue to hide the admin wallet section for non-admin users without surfacing errors.",
+      "reqIds": [
+        "REQ-69"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-admin-page-admin-wallet-balance-card-so-that-it-reflects-the-real-persisted-admin-wallet-balance-when-available-and-shows-a-clear-english-message-when-the-admin-wallet-balance-is-unavailable-instead-of-defaulting-to-0",
+      "title": "Update the Admin page (/admin) wallet-balance card so that it reflects the real persisted admin wallet balance when available and shows a clear English message when the admin wallet balance is unavailable (instead of defaulting to 0).",
+      "reqIds": [
+        "REQ-70"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -584,6 +657,42 @@
       "summary": "Persist the admin wallet balance and per-user balances in stable canister state so that balances are not reset after canister upgrades/redeploys (equivalent to the provided SQL example where the admin row starts at 10000 and changes persist). Add a conditional migration only if needed to preserve existing deployed state.",
       "reqIds": [
         "REQ-56"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-39",
+      "summary": "Add a user Sign Up page/route so users can create a profile (signup flow to support Profile creation).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-40",
+      "summary": "Add a WhatsApp contact button/link (wa.me/923481641187) labeled “Contact Community / Add Fund” styled as a green CTA, opening in a new tab, placed in the UI where appropriate.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-43",
+      "summary": "Implement/complete backend order persistence and retrieval APIs in the single Motoko actor so the Home page can create orders and other pages can fetch them by id. Orders must include fields {id, url, package, status, createdAt}.",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-44",
+      "summary": "Persist the admin wallet balance in stable canister state so that it starts at 10,000 PKR on first install and does not reset to 0 (or reinitialize) after canister upgrades/redeployments.",
+      "reqIds": [
+        "REQ-67"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-45",
+      "summary": "Ensure the admin wallet does not become inaccessible due to missing admin initialization: the backend must reliably recognize the intended admin principal(s) so that admin-only methods (e.g., getAdminWalletBalance, getAllOrders, updateOrderStatus, distributeFunds) work for the admin account used by the app.",
+      "reqIds": [
+        "REQ-68"
       ],
       "status": "pending"
     }

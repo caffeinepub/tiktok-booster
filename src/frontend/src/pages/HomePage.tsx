@@ -8,14 +8,20 @@ import { CheckCircle2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 import AppFooter from '@/components/AppFooter';
+import OrderConfirmationPanel from '@/components/OrderConfirmationPanel';
 import { packages } from '@/lib/packages';
 import { formatPKR } from '@/lib/format';
 import { validateUrl } from '@/lib/validation';
+import { useCreateOrder } from '@/hooks/useOrders';
+import { normalizeBackendError } from '@/lib/backendError';
 
 export default function HomePage() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [confirmedOrderId, setConfirmedOrderId] = useState<bigint | null>(null);
+
+  const createOrderMutation = useCreateOrder();
 
   const handlePackageSelect = (packageId: string) => {
     setSelectedPackage(packageId);
@@ -29,11 +35,13 @@ export default function HomePage() {
     e.preventDefault();
     setUrlError('');
 
+    // Validate package selection
     if (!selectedPackage) {
       toast.error('Please select a package first');
       return;
     }
 
+    // Validate URL
     const urlValidation = validateUrl(videoUrl);
     if (!urlValidation.valid) {
       setUrlError(urlValidation.error || 'Invalid URL');
@@ -41,16 +49,50 @@ export default function HomePage() {
     }
 
     const pkg = packages.find(p => p.id === selectedPackage);
-    
-    toast.success('Order request received!', {
-      description: `${pkg?.name} package - ${formatPKR(pkg?.price || 0)}. Please contact us on Telegram to complete your order.`,
-      duration: 5000,
-    });
+    if (!pkg) {
+      toast.error('Selected package not found');
+      return;
+    }
 
-    // Reset form
-    setVideoUrl('');
-    setSelectedPackage(null);
+    try {
+      const orderId = await createOrderMutation.mutateAsync({
+        url: videoUrl,
+        price: pkg.price,
+        packageName: pkg.name,
+        packageId: pkg.id,
+      });
+
+      setConfirmedOrderId(orderId);
+      
+      toast.success('Order created successfully!', {
+        description: `Order #${orderId.toString()} has been created`,
+      });
+    } catch (error) {
+      const errorMessage = normalizeBackendError(error);
+      toast.error('Failed to create order', {
+        description: errorMessage,
+      });
+    }
   };
+
+  // If order is confirmed, show confirmation panel
+  if (confirmedOrderId && selectedPackage) {
+    return (
+      <div className="min-h-screen">
+        <AppHeader />
+        
+        <main className="container mx-auto px-4 py-12">
+          <OrderConfirmationPanel
+            orderId={confirmedOrderId}
+            packageType={selectedPackage}
+            videoUrl={videoUrl}
+          />
+        </main>
+
+        <AppFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -67,7 +109,7 @@ export default function HomePage() {
             TikTok Booster Pro
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-            Instant Views • Likes • Followers | Professional Growth Service
+            Instant Views • Likes • Followers | 100% Safe
           </p>
         </section>
 
@@ -156,9 +198,10 @@ export default function HomePage() {
                 <Button 
                   type="submit" 
                   className="w-full text-lg py-6"
+                  disabled={createOrderMutation.isPending}
                 >
                   <Sparkles className="w-5 h-5 mr-2" />
-                  Start Boosting
+                  {createOrderMutation.isPending ? 'Creating Order...' : 'Start Boosting'}
                 </Button>
               </form>
             </CardContent>

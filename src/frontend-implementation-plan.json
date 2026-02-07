@@ -1,46 +1,51 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Frontend onboarding flow + React Query hook for initial wallet funding",
+  "title": "Fix admin wallet UI to avoid misleading 0 PKR on query failure",
   "requirements": [
     {
-      "id": "REQ-57",
-      "summary": "Trigger onboarding after Internet Identity sign-in and surface insufficient admin funds errors without changing displayed balances.",
+      "id": "REQ-69",
+      "summary": "Prevent BalanceIndicator from showing a numeric 0 PKR for admins when admin wallet loading fails; show an English unavailable/error state, and keep admin wallet hidden for non-admins.",
       "acceptanceCriteria": [
-        "After signing in as a never-before-seen Principal, the UI triggers onboarding and the BalanceIndicator updates to show +10 PKR without a full page refresh.",
-        "After signing in as an existing user, the onboarding call does not change the user’s balance.",
-        "If onboarding fails due to insufficient admin funds, the UI shows an English error (toast or inline) and does not change any displayed balances."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Add an authenticated-session effect that calls the onboarding React Query mutation once per login (keyed by current Principal), and shows an English toast on failure. Use the existing global Toaster/sonner notification capability to display errors; Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/lib/backendError.ts",
-          "operation": "modify",
-          "description": "Extend backend error normalization to recognize and map the onboarding insufficient-funds message (e.g., \"Admin balance not enough!\") to a clear English UI string, without affecting other error handling."
-        }
-      ]
-    },
-    {
-      "id": "REQ-58",
-      "summary": "Add a React Query mutation hook for onboarding that invalidates/refetches balance queries on success so the BalanceIndicator updates immediately.",
-      "acceptanceCriteria": [
-        "A new React Query hook exists for onboarding/initial funding and is used by the sign-in flow.",
-        "On success, the hook invalidates/refetches at minimum the caller balance query (and admin wallet query when applicable) so UI updates immediately."
+        "If getAdminWalletBalance errors for an authenticated admin user, BalanceIndicator does not render a numeric 0 as the admin wallet balance; it renders an English error/unavailable state.",
+        "If the viewer is not an admin, BalanceIndicator does not show an error state related to admin wallet access and simply omits the admin wallet portion.",
+        "If getAdminWalletBalance succeeds, BalanceIndicator shows the correct persisted admin wallet balance (formatted) and not 0."
       ],
       "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Create a new React Query mutation hook (e.g., useOnboarding) that calls the backend onboarding capability via the actor, and on success invalidates/refetches the existing ['balance'] query and also ['adminWalletBalance'] to keep admin displays in sync."
+          "description": "Adjust useGetAdminWalletBalance to surface fetch failures to the UI in a controlled way (no implicit 0/placeholder fallback for admin wallet), while keeping the query disabled for non-admins. This aligns with the app’s role-based access control from the authorization component (Verify the component's usage instructions before implementing)."
         },
         {
-          "path": "frontend/src/components/AppLayout.tsx",
+          "path": "frontend/src/components/BalanceIndicator.tsx",
           "operation": "modify",
-          "description": "Wire the new onboarding hook into the post-login flow so the mutation is invoked after sign-in and successful results drive immediate balance refresh via query invalidation/refetch."
+          "description": "Update admin wallet rendering to use the admin-wallet query error state: for admins, render a clear English unavailable/error message instead of formatting 0; keep the admin wallet section omitted for non-admin users. Ensure no user-facing non-English strings are introduced."
+        },
+        {
+          "path": "frontend/src/lib/backendError.ts",
+          "operation": "modify",
+          "description": "Extend error normalization (if needed) with a clear English message for admin-wallet-unavailable cases (including authorization traps and connectivity/actor availability) so BalanceIndicator can display a consistent, user-friendly status without showing 0."
+        }
+      ]
+    },
+    {
+      "id": "REQ-70",
+      "summary": "Update /admin wallet-balance card to show real admin wallet balance when available and a clear English unavailable/error state when not (never default to 0).",
+      "acceptanceCriteria": [
+        "When signed in as an admin, /admin displays the same correct admin wallet balance as returned by getAdminWalletBalance.",
+        "When the admin wallet balance cannot be loaded, /admin shows an English error/unavailable state and does not show 0 as a fallback value."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Update the admin wallet-balance card to: (1) show formatted balance only when the query has valid data, and (2) show a clear English unavailable/error message when the admin wallet cannot be loaded (including unauthorized), without rendering 0 as a fallback. Prefer using the shared normalizeBackendError helper for consistent messaging."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Ensure the /admin page’s useGetAdminWalletBalance consumption has the necessary query state (loading/error/data) to render the correct UI states without relying on BigInt(0) fallbacks. This should remain compatible with the authorization component’s admin gating behavior (Verify the component's usage instructions before implementing)."
         }
       ]
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { useGetCallerUserProfile, useSaveCallerUserProfile } from '@/hooks/useQueries';
 import { useQueryClient } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { Loader2, User, Edit, Save, LogOut, KeyRound, Upload } from 'lucide-reac
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const searchParams = useSearch({ strict: false }) as { setup?: string };
   const { identity, clear, isInitializing } = useInternetIdentity();
   const queryClient = useQueryClient();
   const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
@@ -30,6 +31,13 @@ export default function ProfilePage() {
   const isAuthenticated = !!identity;
   const showLoginPrompt = !isInitializing && !isAuthenticated;
   const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
+
+  // Enable edit mode if coming from signup or if profile doesn't exist
+  useEffect(() => {
+    if (searchParams.setup === '1' || showProfileSetup) {
+      setIsEditMode(true);
+    }
+  }, [searchParams.setup, showProfileSetup]);
 
   // Populate form when profile loads
   useEffect(() => {
@@ -124,18 +132,28 @@ export default function ProfilePage() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Profile Access</CardTitle>
             <CardDescription>
-              Please log in to view and manage your profile
+              Please sign up or log in to view and manage your profile
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
             <User className="w-16 h-16 text-muted-foreground" />
-            <Button
-              onClick={() => navigate({ to: '/' })}
-              size="lg"
-              className="w-full"
-            >
-              Go to Home & Log In
-            </Button>
+            <div className="flex flex-col gap-3 w-full">
+              <Button
+                onClick={() => navigate({ to: '/signup' })}
+                size="lg"
+                className="w-full"
+              >
+                Sign Up
+              </Button>
+              <Button
+                onClick={() => navigate({ to: '/' })}
+                variant="outline"
+                size="lg"
+                className="w-full"
+              >
+                Go to Home & Log In
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

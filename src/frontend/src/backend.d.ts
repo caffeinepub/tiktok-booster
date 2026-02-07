@@ -7,6 +7,16 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface Order {
+    url: string;
+    status: OrderStatus;
+    owner: Principal;
+    package: string;
+    createdAt: bigint;
+    orderId: bigint;
+    price: bigint;
+    packageId: bigint;
+}
 export interface UserProfile {
     bio?: string;
     username: string;
@@ -14,21 +24,30 @@ export interface UserProfile {
     phone?: string;
     profilePicture?: string;
 }
+export enum OrderStatus {
+    cancelled = "cancelled",
+    pending = "pending",
+    completed = "completed",
+    failed = "failed"
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
     guest = "guest"
 }
 export interface backendInterface {
+    addOrder(url: string, price: bigint, package: string, packageId: bigint): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     distributeFunds(toUser: Principal, amount: bigint): Promise<void>;
     getAdminWalletBalance(): Promise<bigint>;
+    getAllOrders(): Promise<Array<Order>>;
     getBalance(): Promise<bigint>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getOrderById(orderId: bigint): Promise<Order | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    getUserWalletAddress(_userId: bigint): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     onboarding(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    updateOrderStatus(orderId: bigint, status: OrderStatus): Promise<void>;
 }

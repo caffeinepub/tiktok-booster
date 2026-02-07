@@ -1,5 +1,6 @@
 export function formatTimestamp(timestamp: bigint): string {
-  const milliseconds = Number(timestamp / BigInt(1_000_000));
+  const nanoseconds = Number(timestamp);
+  const milliseconds = nanoseconds / 1_000_000;
   const date = new Date(milliseconds);
   
   return date.toLocaleString('en-US', {

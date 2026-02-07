@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T14:04:10.160Z",
+  "generatedAt": "2026-02-07T16:13:35.501Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -11,60 +11,61 @@
     "implemented": 2,
     "items": [
       {
-        "id": "REQ-55",
-        "summary": "Implement a backend onboarding API that mirrors the provided PHP logic: when an authenticated user is new (no existing balance record), allocate an initial balance of 10 PKR to that user by deducting 10 PKR from the single admin wallet within the same backend call. If the admin wallet balance is less than 10 PKR, the call must fail without changing either balance and return a clear English error message (e.g., \"Admin balance not enough!\").",
+        "id": "REQ-67",
+        "summary": "Persist the admin wallet balance in stable canister state so that it starts at 10,000 PKR on first install and does not reset to 0 (or reinitialize) after canister upgrades/redeployments.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-56",
-        "summary": "Persist the admin wallet balance and per-user balances in stable canister state so that balances are not reset after canister upgrades/redeploys (equivalent to the provided SQL example where the admin row starts at 10000 and changes persist). Add a conditional migration only if needed to preserve existing deployed state.",
+        "id": "REQ-68",
+        "summary": "Ensure the admin wallet does not become inaccessible due to missing admin initialization: the backend must reliably recognize the intended admin principal(s) so that admin-only methods (e.g., getAdminWalletBalance, getAllOrders, updateOrderStatus, distributeFunds) work for the admin account used by the app.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-57",
-        "summary": "Add a frontend flow that calls the new onboarding API after a user signs in (Internet Identity) so new users automatically receive the initial 10 PKR allocation (when available), and returning users are not re-credited. If onboarding fails due to insufficient admin funds, show an English error toast/message and keep the displayed balances unchanged.",
+        "id": "REQ-69",
+        "summary": "Update the BalanceIndicator admin wallet display logic so it never misleadingly shows “0 PKR” when the admin wallet query fails or is unavailable; instead, show a clear English UI state (e.g., “Admin Wallet: Unavailable” or an error message) for admins, and continue to hide the admin wallet section for non-admin users without surfacing errors.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/AppLayout.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/BalanceIndicator.tsx",
           "frontend/src/lib/backendError.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/AppLayout.tsx",
+          "frontend/src/components/BalanceIndicator.tsx",
           "frontend/src/lib/backendError.ts"
         ]
       },
       {
-        "id": "REQ-58",
-        "summary": "Add a React Query mutation/hook for the onboarding API alongside the existing wallet hooks, and ensure successful onboarding invalidates/refetches the existing balance queries so BalanceIndicator updates immediately.",
+        "id": "REQ-70",
+        "summary": "Update the Admin page (/admin) wallet-balance card so that it reflects the real persisted admin wallet balance when available and shows a clear English message when the admin wallet balance is unavailable (instead of defaulting to 0).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/AppLayout.tsx"
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/AppLayout.tsx"
+          "frontend/src/pages/AdminPage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/AppLayout.tsx",
+    "frontend/src/components/BalanceIndicator.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
     "frontend/src/lib/backendError.ts",
+    "frontend/src/pages/AdminPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

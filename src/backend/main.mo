@@ -1,15 +1,17 @@
 import Map "mo:core/Map";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-
+import Nat "mo:core/Nat";
+import Time "mo:core/Time";
+import Iter "mo:core/Iter";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
-// System has been deployed before with a balance of 10000 PKR for the admin wallet.
-// The corresponding migration was already run, increasing the balance from 1,000 to 10,000 PKR.
-
+(with migration = Migration.run)
 actor {
   var adminWallet = 10_000 : Nat;
+  var nextOrderId = 1;
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -25,6 +27,26 @@ actor {
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
+
+  public type OrderStatus = {
+    #pending;
+    #completed;
+    #cancelled;
+    #failed;
+  };
+
+  public type Order = {
+    orderId : Nat;
+    owner : Principal;
+    price : Nat;
+    url : Text;
+    package : Text;
+    packageId : Nat;
+    status : OrderStatus;
+    createdAt : Int;
+  };
+
+  let orders = Map.empty<Nat, Order>();
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -97,10 +119,62 @@ actor {
     userBalances.add(toUser, currentBalance + amount);
   };
 
-  public query ({ caller }) func getUserWalletAddress(_userId : Nat) : async () {
+  // Add new order - requires user authentication
+  public shared ({ caller }) func addOrder(url : Text, price : Nat, package : Text, packageId : Nat) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access wallet information");
+      Runtime.trap("Unauthorized: Only users can create orders");
     };
-    Runtime.trap("Not implemented: User wallet addresses are currently managed by the external ICP Wallet system. This method will be used to retrieve user wallet addresses once Starknet egress is available on ICP, enabling developers to manage wallet creation and storage of information directly in the canisters.");
+    let orderId = nextOrderId;
+    let newOrder : Order = {
+      orderId;
+      owner = caller;
+      price;
+      url;
+      package;
+      packageId;
+      status = #pending;
+      createdAt = Time.now();
+    };
+    orders.add(orderId, newOrder);
+    nextOrderId += 1;
+    orderId;
+  };
+
+  // Get order by id - owner or admin only
+  public query ({ caller }) func getOrderById(orderId : Nat) : async ?Order {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view orders");
+    };
+    let order = orders.get(orderId);
+    switch (order) {
+      case (?o) {
+        if (o.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Can only view your own orders");
+        };
+        order;
+      };
+      case (null) { null };
+    };
+  };
+
+  // Update order status - admin only
+  public shared ({ caller }) func updateOrderStatus(orderId : Nat, status : OrderStatus) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can update order status");
+    };
+    let order = switch (orders.get(orderId)) {
+      case (null) { Runtime.trap("Order with id " # orderId.toText() # " does not exist! ") };
+      case (?order) { order };
+    };
+    let updatedOrder = { order with status };
+    orders.add(orderId, updatedOrder);
+  };
+
+  // Get all orders. Admin only.
+  public query ({ caller }) func getAllOrders() : async [Order] {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can access all orders");
+    };
+    orders.values().toArray();
   };
 };

@@ -1,10 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { User } from 'lucide-react';
+import { User, UserPlus } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 
 export default function AppHeader() {
   const headerRef = useRef<HTMLElement>(null);
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
 
   useEffect(() => {
     const updateHeaderOffset = () => {
@@ -39,12 +42,21 @@ export default function AppHeader() {
           <span className="text-2xl font-bold text-foreground">TikTok Booster Pro</span>
         </Link>
         
-        <Link to="/profile">
-          <Button variant="outline" size="sm" className="gap-2">
-            <User className="w-4 h-4" />
-            <span className="hidden sm:inline">Profile</span>
-          </Button>
-        </Link>
+        {isAuthenticated ? (
+          <Link to="/profile">
+            <Button variant="outline" size="sm" className="gap-2">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Profile</span>
+            </Button>
+          </Link>
+        ) : (
+          <Link to="/signup">
+            <Button variant="default" size="sm" className="gap-2">
+              <UserPlus className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign Up</span>
+            </Button>
+          </Link>
+        )}
       </div>
     </header>
   );

@@ -7,6 +7,7 @@ import { ArrowLeft, BarChart3, Wallet, AlertCircle } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import { useGetAdminWalletBalance } from '@/hooks/useQueries';
 import { formatBalance } from '@/lib/format';
+import { normalizeBackendError } from '@/lib/backendError';
 
 export default function AdminPage() {
   const { data: adminBalance, isLoading: adminBalanceLoading, error: adminBalanceError } = useGetAdminWalletBalance();
@@ -50,13 +51,20 @@ export default function AdminPage() {
                   <Alert variant="destructive" className="mt-2">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Unauthorized: Only admin can access wallet balance
+                      {normalizeBackendError(adminBalanceError)}
                     </AlertDescription>
                   </Alert>
-                ) : (
+                ) : adminBalance !== undefined ? (
                   <p className="text-4xl font-bold text-primary">
-                    {formatBalance(adminBalance || BigInt(0))} <span className="text-2xl text-muted-foreground">PKR</span>
+                    {formatBalance(adminBalance)} <span className="text-2xl text-muted-foreground">PKR</span>
                   </p>
+                ) : (
+                  <Alert className="mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Admin wallet balance unavailable
+                    </AlertDescription>
+                  </Alert>
                 )}
               </div>
             </CardContent>

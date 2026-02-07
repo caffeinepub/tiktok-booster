@@ -24,11 +24,11 @@ export function normalizeBackendError(error: unknown): string {
   }
 
   if (errorMessage.includes('Unauthorized') || errorMessage.includes('Only admin')) {
-    return 'Unauthorized. Only admin can perform this action.';
+    return 'Unauthorized. Admin access required.';
   }
 
   if (errorMessage.includes('Actor not initialized') || errorMessage.includes('Actor not available')) {
-    return 'Connection error. Please refresh the page and try again.';
+    return 'Connection unavailable. Please refresh the page.';
   }
 
   if (errorMessage.includes('Amount must be greater than zero')) {

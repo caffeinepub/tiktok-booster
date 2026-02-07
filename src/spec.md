@@ -1,12 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Port the PHP/MySQL “new user gets 10 PKR funded from admin wallet” behavior to an Internet Identity + Motoko canister flow with stable, upgrade-safe balances and a frontend onboarding trigger.
+**Goal:** Fix the admin wallet balance so it persists correctly across upgrades and never misleadingly displays “0 PKR” when the balance cannot be loaded.
 
 **Planned changes:**
-- Add a backend onboarding API in `backend/main.mo` that, for authenticated callers with no existing balance record, atomically credits the user +10 PKR and deducts 10 PKR from a single admin wallet; if admin balance < 10 PKR, fail with an English error and do not change any balances.
-- Make admin wallet and per-user balances persist in stable canister state across upgrades, including initializing admin to 10,000 PKR on fresh install and applying conditional migration only when needed to preserve existing deployed state.
-- Add a frontend post-sign-in onboarding flow (Internet Identity) that calls the onboarding API, updates the displayed balance without full refresh, and shows an English error message if admin funds are insufficient while keeping displayed balances unchanged.
-- Add a React Query mutation/hook for onboarding, and on success invalidate/refetch existing balance queries so the BalanceIndicator updates immediately.
+- Persist the admin wallet balance in stable canister state, initializing to 10,000 PKR only on first install and preserving updates across upgrades/redeployments.
+- Ensure the backend reliably recognizes the intended admin principal(s) so admin-only methods remain accessible to the admin account and protected from non-admin access.
+- Update the BalanceIndicator admin wallet UI to show a clear English “unavailable/error” state for admins when the balance fetch fails (instead of showing 0), and keep the admin wallet section hidden for non-admin users.
+- Update the /admin wallet-balance card to display the real persisted balance when available and show a clear English “unavailable/error” message when it cannot be loaded (no 0 fallback).
 
-**User-visible outcome:** After signing in with Internet Identity, new users automatically receive an initial 10 PKR balance (when admin funds allow) and returning users are not re-credited; if admin funds are insufficient, the UI shows an English error and balances remain unchanged.
+**User-visible outcome:** Admins see the correct persisted admin wallet balance (starting at 10,000 PKR on first install and preserved across upgrades), and if the balance cannot be loaded the UI clearly indicates it’s unavailable rather than showing “0 PKR”; non-admin users do not see admin wallet information.
