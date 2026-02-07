@@ -409,7 +409,7 @@ export default function DashboardPage() {
                 <div className="p-3 rounded-lg border bg-muted/30">
                   <p className="text-sm font-medium mb-1">Wallet System</p>
                   <p className="text-xs text-muted-foreground">
-                    Admin can distribute funds to users. Users can check their balance in the top-left corner.
+                    User balances are shown in the top-right corner. Balances are added by the admin via "Distribute Funds to User".
                   </p>
                 </div>
                 <div className="p-3 rounded-lg border bg-muted/30">

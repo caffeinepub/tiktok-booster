@@ -5,7 +5,8 @@ import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-// Persist the balance increase from 1,000 to 10,000 PKR
+// System has been deployed before with a balance of 10000 PKR for the admin wallet.
+// The corresponding migration was already run, increasing the balance from 1,000 to 10,000 PKR.
 
 actor {
   var adminWallet = 10_000 : Nat;
@@ -44,6 +45,24 @@ actor {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
     userProfiles.add(caller, profile);
+  };
+
+  public shared ({ caller }) func onboarding() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can receive funds");
+    };
+    switch (userBalances.get(caller)) {
+      case (?_existingBalance) {
+        Runtime.trap("User already exists in the database");
+      };
+      case (null) {
+        if (adminWallet < 10) {
+          Runtime.trap("Admin balance not enough! Internal admin wallet does not have enough funds to perform this transaction. Please contact a system Administrator!");
+        };
+        adminWallet -= 10;
+        userBalances.add(caller, 10);
+      };
+    };
   };
 
   public query ({ caller }) func getBalance() : async Nat {

@@ -112,6 +112,7 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getUserWalletAddress(_userId: bigint): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
+    onboarding(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }
 import type { UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
@@ -254,6 +255,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.isCallerAdmin();
+            return result;
+        }
+    }
+    async onboarding(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.onboarding();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.onboarding();
             return result;
         }
     }

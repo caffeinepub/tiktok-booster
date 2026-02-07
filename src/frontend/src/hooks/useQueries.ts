@@ -131,3 +131,28 @@ export function useDistributeFunds() {
     },
   });
 }
+
+export function useOnboarding() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not initialized');
+      return await actor.onboarding();
+    },
+    onSuccess: async () => {
+      // Invalidate and immediately refetch balance queries to update UI
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['balance'] }),
+        queryClient.invalidateQueries({ queryKey: ['adminWalletBalance'] }),
+      ]);
+      
+      // Force immediate refetch
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['balance'] }),
+        queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] }),
+      ]);
+    },
+  });
+}

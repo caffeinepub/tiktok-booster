@@ -1,7 +1,7 @@
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { useGetBalance, useIsCallerAdmin, useGetAdminWalletBalance } from '@/hooks/useQueries';
 import { formatBalance } from '@/lib/format';
-import { Wallet, ShieldCheck } from 'lucide-react';
+import { Wallet, ShieldCheck, LogIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from '@tanstack/react-router';
@@ -17,6 +17,12 @@ export default function BalanceIndicator() {
   const showLoading = isAuthenticated && (isInitializing || balanceLoading);
   const showAdminWallet = isAuthenticated && isAdmin === true;
   const displayAdminBalance = adminWalletBalance || BigInt(0);
+  
+  // Show zero balance helper when authenticated and balance is 0 (and not loading)
+  const showZeroBalanceHelper = isAuthenticated && !showLoading && displayBalance === BigInt(0);
+  
+  // Show sign-in prompt when not authenticated
+  const showSignInPrompt = !isAuthenticated;
 
   return (
     <div className="fixed-safe-top-right z-50 flex flex-col gap-2 items-end">
@@ -33,6 +39,33 @@ export default function BalanceIndicator() {
             </span>
             <span className="text-sm font-medium text-muted-foreground">PKR</span>
           </div>
+          
+          {/* Zero balance helper for authenticated users */}
+          {showZeroBalanceHelper && (
+            <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
+              Balances are funded by the admin wallet. Contact an admin to receive funds via "Distribute Funds to User".
+            </p>
+          )}
+          
+          {/* Sign-in prompt for unauthenticated users */}
+          {showSignInPrompt && (
+            <div className="mt-2 flex flex-col gap-2 items-start">
+              <p className="text-xs text-muted-foreground max-w-[200px]">
+                Sign in to view your balance
+              </p>
+              <Button 
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+              >
+                <Link to="/profile">
+                  <LogIn className="w-3 h-3 mr-1.5" />
+                  Sign In
+                </Link>
+              </Button>
+            </div>
+          )}
           
           {showAdminWallet && (
             <>

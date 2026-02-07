@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 31,
+  "projectStateVersion": 35,
   "summary": "Project now includes a wallet/balance system requirement: an admin wallet starting at 10,000 that is the sole source of user balances, with secure database persistence, real-time balance updates after transactions, and UI balance displays (wallet indicator positioned top-right under the Profile control; admin total balance in admin dashboard) in a clean, modern, mobile-friendly design.",
   "architectural_notes": [
     "Project type: Node.js Express app; serves HTML (currently via res.send) and static assets from /public.",
@@ -360,6 +360,46 @@
         "REQ-51"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-global-balanceindicator-widget-to-clearly-explain-in-english-how-a-user-can-get-balance-when-they-are-not-funded-yet-so-users-understand-where-balance-comes-from",
+      "title": "Update the global BalanceIndicator widget to clearly explain (in English) how a user can get balance when they are not funded yet, so users understand where balance comes from.",
+      "reqIds": [
+        "REQ-52"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-unauthenticated-state-hint-in-the-balanceindicator-so-users-know-they-must-sign-in-to-see-their-real-balance-and-to-receive-funds",
+      "title": "Add an unauthenticated-state hint in the BalanceIndicator so users know they must sign in to see their real balance and to receive funds.",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-dashboard-page-copy-to-match-the-current-balanceindicator-placement-and-reduce-confusion-about-where-the-balance-is-shown-and-how-it-is-funded",
+      "title": "Update the Dashboard page copy to match the current BalanceIndicator placement and reduce confusion about where the balance is shown and how it is funded.",
+      "reqIds": [
+        "REQ-54"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-frontend-flow-that-calls-the-new-onboarding-api-after-a-user-signs-in-internet-identity-so-new-users-automatically-receive-the-initial-10-pkr-allocation-when-available-and-returning-users-are-not-re-credited-if-onboarding-fails-due-to-insufficient-admin-funds-show-an-english-error-toast-message-and-keep-the-displayed-balances-unchanged",
+      "title": "Add a frontend flow that calls the new onboarding API after a user signs in (Internet Identity) so new users automatically receive the initial 10 PKR allocation (when available), and returning users are not re-credited. If onboarding fails due to insufficient admin funds, show an English error toast/message and keep the displayed balances unchanged.",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-react-query-mutation-hook-for-the-onboarding-api-alongside-the-existing-wallet-hooks-and-ensure-successful-onboarding-invalidates-refetches-the-existing-balance-queries-so-balanceindicator-updates-immediately",
+      "title": "Add a React Query mutation/hook for the onboarding API alongside the existing wallet hooks, and ensure successful onboarding invalidates/refetches the existing balance queries so BalanceIndicator updates immediately.",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -529,6 +569,22 @@
       "id": "AR-36",
       "summary": "Show the admin wallet balance on the index/home page as well (for admin users), in addition to the existing user balance indicator behavior.",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-37",
+      "summary": "Implement a backend onboarding API that mirrors the provided PHP logic: when an authenticated user is new (no existing balance record), allocate an initial balance of 10 PKR to that user by deducting 10 PKR from the single admin wallet within the same backend call. If the admin wallet balance is less than 10 PKR, the call must fail without changing either balance and return a clear English error message (e.g., \"Admin balance not enough!\").",
+      "reqIds": [
+        "REQ-55"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-38",
+      "summary": "Persist the admin wallet balance and per-user balances in stable canister state so that balances are not reset after canister upgrades/redeploys (equivalent to the provided SQL example where the admin row starts at 10000 and changes persist). Add a conditional migration only if needed to preserve existing deployed state.",
+      "reqIds": [
+        "REQ-56"
+      ],
       "status": "pending"
     }
   ],

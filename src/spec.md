@@ -1,11 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Show the Admin Wallet balance (PKR) in the global BalanceIndicator for admin users while keeping existing balance behavior unchanged for non-admin and unauthenticated users.
+**Goal:** Port the PHP/MySQL “new user gets 10 PKR funded from admin wallet” behavior to an Internet Identity + Motoko canister flow with stable, upgrade-safe balances and a frontend onboarding trigger.
 
 **Planned changes:**
-- Update the BalanceIndicator logic to fetch and display an additional, clearly labeled "Admin Wallet" balance (in PKR) only when the signed-in user is an admin.
-- Ensure non-admin and unauthenticated users never see admin wallet information and that any admin-wallet fetch/authorization failures do not break or error the BalanceIndicator UI.
-- Refresh the displayed Admin Wallet balance after successful admin distribution actions so it reflects the backend state without a full page reload.
+- Add a backend onboarding API in `backend/main.mo` that, for authenticated callers with no existing balance record, atomically credits the user +10 PKR and deducts 10 PKR from a single admin wallet; if admin balance < 10 PKR, fail with an English error and do not change any balances.
+- Make admin wallet and per-user balances persist in stable canister state across upgrades, including initializing admin to 10,000 PKR on fresh install and applying conditional migration only when needed to preserve existing deployed state.
+- Add a frontend post-sign-in onboarding flow (Internet Identity) that calls the onboarding API, updates the displayed balance without full refresh, and shows an English error message if admin funds are insufficient while keeping displayed balances unchanged.
+- Add a React Query mutation/hook for onboarding, and on success invalidate/refetch existing balance queries so the BalanceIndicator updates immediately.
 
-**User-visible outcome:** Admin users see both their caller balance and an "Admin Wallet" balance in the fixed balance widget across the app; non-admin/unauthenticated users see the existing balance display only, with no new errors introduced.
+**User-visible outcome:** After signing in with Internet Identity, new users automatically receive an initial 10 PKR balance (when admin funds allow) and returning users are not re-credited; if admin funds are insufficient, the UI shows an English error and balances remain unchanged.

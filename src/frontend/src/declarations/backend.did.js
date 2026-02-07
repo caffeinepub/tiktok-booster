@@ -36,6 +36,7 @@ export const idlService = IDL.Service({
     ),
   'getUserWalletAddress' : IDL.Func([IDL.Nat], [], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'onboarding' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
 });
 
@@ -70,6 +71,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getUserWalletAddress' : IDL.Func([IDL.Nat], [], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'onboarding' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   });
 };

@@ -1,87 +1,98 @@
 {
   "kind": "build_request",
-  "title": "Show admin wallet balance on the index (home) balance widget for admin users",
+  "title": "Port the provided PHP/MySQL signup + wallet funding behavior to Internet Identity + Motoko admin wallet",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-49",
-      "text": "Update the global BalanceIndicator so that when the signed-in user is an admin, the UI also shows the Admin Wallet Balance (in PKR) in the same fixed balance widget shown on the index/home page (and wherever BalanceIndicator is rendered), without changing the existing behavior for non-admin users.",
-      "target": "frontend",
+      "id": "REQ-55",
+      "text": "Implement a backend onboarding API that mirrors the provided PHP logic: when an authenticated user is new (no existing balance record), allocate an initial balance of 10 PKR to that user by deducting 10 PKR from the single admin wallet within the same backend call. If the admin wallet balance is less than 10 PKR, the call must fail without changing either balance and return a clear English error message (e.g., \"Admin balance not enough!\").",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "Is ko bi balance index ma add kar do ... SELECT balance FROM admin WHERE id=1 ..."
+          "$initialBalance = 10; ... if($admin['balance'] >= $initialBalance){ ... Deduct admin balance ... } else { $error = \"Admin balance not enough!\"; }"
         ]
       },
       "acceptanceCriteria": [
-        "When viewing the Home (index) page as a non-admin authenticated user, the BalanceIndicator continues to show only the caller balance and does not display any admin wallet information.",
-        "When viewing the Home (index) page as an unauthenticated user, the BalanceIndicator continues to show a default balance of 0 PKR and does not display any admin wallet information.",
-        "When viewing the Home (index) page as an admin user, the BalanceIndicator displays both (a) the caller balance and (b) an additional clearly labeled 'Admin Wallet' balance value in PKR.",
-        "All user-facing labels used for the admin wallet display are in English."
+        "Given a signed-in user with no prior balance record, calling the onboarding API credits the user with 10 PKR and deducts 10 PKR from the admin wallet atomically.",
+        "Given a signed-in user who already has a balance record, calling the onboarding API does not change balances and succeeds (idempotent).",
+        "Given admin wallet balance < 10 PKR, calling the onboarding API fails and neither admin wallet nor user balance changes.",
+        "The error surfaced from the backend is in English and matches/contains the meaning of \"Admin balance not enough!\"."
       ]
     },
     {
-      "id": "REQ-50",
-      "text": "Prevent unauthorized admin-wallet lookups from breaking the BalanceIndicator UI: the app must not surface an error state in BalanceIndicator for non-admin users due to calling the admin-wallet API; instead, it should treat admin-wallet data as unavailable and simply not render the admin-wallet portion of the UI.",
-      "target": "frontend",
+      "id": "REQ-56",
+      "text": "Persist the admin wallet balance and per-user balances in stable canister state so that balances are not reset after canister upgrades/redeploys (equivalent to the provided SQL example where the admin row starts at 10000 and changes persist). Add a conditional migration only if needed to preserve existing deployed state.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "if($admin['balance'] >= $initialBalance){ ... deduct from admin ... }"
-        ]
-      },
-      "acceptanceCriteria": [
-        "On a non-admin account, the BalanceIndicator renders normally and does not show an error message related to admin wallet authorization.",
-        "On an admin account, the BalanceIndicator successfully fetches and renders the admin wallet balance.",
-        "If the admin wallet fetch fails for any reason (network/actor not ready), the BalanceIndicator still renders the caller balance and the page remains usable."
-      ]
-    },
-    {
-      "id": "REQ-51",
-      "text": "Ensure the displayed Admin Wallet balance in the BalanceIndicator reflects backend state (Motoko adminWallet): after a successful admin-to-user distribution, the Admin Wallet balance shown in the UI updates without requiring a full page refresh.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
+          "INSERT INTO admin (balance) VALUES (10000);",
           "UPDATE admin SET balance = balance - $initialBalance WHERE id=1"
         ]
       },
       "acceptanceCriteria": [
-        "After completing an admin distribution flow in the app, the Admin Wallet balance shown in the fixed balance widget updates to the new value without a full page reload.",
-        "The admin wallet balance displayed matches the value returned by the backend getAdminWalletBalance API (no frontend-only/admin-local balance source)."
+        "Admin wallet initial value remains 10,000 PKR only for a fresh install; after distributions/onboarding allocations, the resulting balance persists across upgrades.",
+        "User balances (including the new-user 10 PKR initial allocation) persist across upgrades.",
+        "If prior state exists, upgrading does not wipe balances; any required migration is conditional and preserves existing values."
+      ]
+    },
+    {
+      "id": "REQ-57",
+      "text": "Add a frontend flow that calls the new onboarding API after a user signs in (Internet Identity) so new users automatically receive the initial 10 PKR allocation (when available), and returning users are not re-credited. If onboarding fails due to insufficient admin funds, show an English error toast/message and keep the displayed balances unchanged.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "header(\"Location: dashboard.php\");",
+          "<div class=\"wallet\"> 💰 Balance: <?php echo $user['balance']; ?> </div>",
+          "$error = \"Admin balance not enough!\";"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After signing in as a never-before-seen Principal, the UI triggers onboarding and the BalanceIndicator updates to show +10 PKR without a full page refresh.",
+        "After signing in as an existing user, the onboarding call does not change the user’s balance.",
+        "If onboarding fails due to insufficient admin funds, the UI shows an English error (toast or inline) and does not change any displayed balances."
+      ]
+    },
+    {
+      "id": "REQ-58",
+      "text": "Add a React Query mutation/hook for the onboarding API alongside the existing wallet hooks, and ensure successful onboarding invalidates/refetches the existing balance queries so BalanceIndicator updates immediately.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "💰 Balance: <?php echo $user['balance']; ?>"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A new React Query hook exists for onboarding/initial funding and is used by the sign-in flow.",
+        "On success, the hook invalidates/refetches at minimum the caller balance query (and admin wallet query when applicable) so UI updates immediately."
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/components/ui (read-only UI components).",
-    "Respect the existing single-actor Motoko backend architecture; do not add additional backend services.",
-    "Use English for any user-facing text."
+    "Use English for all user-facing text.",
+    "Do not add or depend on MySQL, PHP sessions, or any external database; persistence must be done using stable Motoko canister state.",
+    "Keep all Motoko logic in the single main actor (backend/main.mo).",
+    "Only create a migration file/logic if it is required to preserve existing deployed state (conditional migration policy).",
+    "Do not edit files in frontend immutablePaths (e.g., useActor/useInternetIdentity/main.tsx/components/ui)."
   ],
   "nonGoals": [
-    "Do not add any SQL tables, MySQL logic, or PHP code to the project (the provided snippet is behavioral reference only).",
-    "Do not change the backend authorization model beyond what is necessary to safely display admin wallet balance to admins.",
-    "Do not implement any real TikTok API or external payment integration."
+    "Implementing password-based signup/login (password hashing, sessions) like the PHP example; authentication remains Internet Identity.",
+    "Building an Express/PHP server or server-rendered pages like signup.php/dashboard.php/logout.php.",
+    "Adding third-party auth providers or external wallet integrations."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [
-      "Use English for any user-facing text."
-    ],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

@@ -1,25 +1,67 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T13:12:35.774Z",
-  "summary": "BalanceIndicator was updated to show an additional English-labeled “Admin Wallet” balance (PKR) for authenticated admin users, and react-query hooks were added/updated to check admin status, fetch admin wallet balance only when admin, and refetch balances after distributions. One key resilience requirement is not fully met: if the admin-wallet fetch fails for an admin user, the UI still renders the admin-wallet section and falls back to showing 0 rather than treating the admin-wallet data as unavailable and hiding that section.",
+  "generatedAt": "2026-02-07T14:04:10.156Z",
+  "summary": "Backend adds an `onboarding()` method and admin/user balance logic, and frontend triggers onboarding post-login with error toasts. However, onboarding is not idempotent (it traps for existing users), and balances are not shown as persisted in stable canister state. Several additional profile-related APIs/UI utilities were added that are not part of the BuildRequest.",
   "missing_requirements": [
     {
-      "id": "REQ-50",
-      "requirement": "If the admin wallet fetch fails for any reason (network/actor not ready), the BalanceIndicator still renders the caller balance and the page remains usable, and it should treat admin-wallet data as unavailable and simply not render the admin-wallet portion of the UI.",
-      "reason": "The admin-wallet UI section is shown whenever `showAdminWallet` is true (authenticated and `isAdmin === true`), regardless of whether the admin wallet query errors. Additionally, `displayAdminBalance` defaults to `BigInt(0)` when `adminWalletBalance` is undefined, so on error it will still render an “Admin Wallet” section with a 0 value rather than hiding that section as “unavailable.”",
+      "id": "REQ-55",
+      "requirement": "Onboarding must be idempotent: if the signed-in user already has a balance record, calling onboarding succeeds and does not change balances.",
+      "reason": "The backend `onboarding()` traps with an error when a user already has a balance, which violates the idempotent success requirement and will be treated as a failure by the frontend mutation.",
       "evidence": [
-        "frontend/src/components/BalanceIndicator.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-56",
+      "requirement": "Persist the admin wallet balance and per-user balances in stable canister state so balances persist across upgrades; admin starts at 10,000 only for fresh install; conditional migration only if needed to preserve existing deployed state.",
+      "reason": "The diff shows `var adminWallet = 10_000` and `let userBalances = Map.empty(...)` without any stable variables or explicit pre/post-upgrade persistence logic, and no conditional migration logic is visible.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-57",
+      "requirement": "Returning users should not be re-credited and onboarding should not surface as a failure; UI should keep balances unchanged and only show insufficient-funds errors.",
+      "reason": "Frontend suppresses the toast for an \"already exists\" error, but the backend still traps for existing users, meaning the onboarding call fails rather than succeeding idempotently as required.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/components/AppLayout.tsx",
+        "frontend/src/lib/backendError.ts"
       ]
     }
   ],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "User profile storage and APIs (UserProfile type, get/save caller profile, admin/self profile viewing).",
+      "reason": "BuildRequest is focused on onboarding + wallet funding and persistence; profile management was not requested.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    },
+    {
+      "description": "Backend method stub for external wallet addresses (`getUserWalletAddress`) with long explanatory trap message.",
+      "reason": "BuildRequest explicitly targets admin wallet + per-user balances and onboarding; external wallet address management is out of scope.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "description": "General-purpose backend error normalization utility with mappings beyond onboarding (e.g., admin actions, actor availability).",
+      "reason": "Only onboarding insufficient-funds error messaging was required; broader normalization was not requested.",
+      "evidence": [
+        "frontend/src/lib/backendError.ts"
+      ]
+    }
+  ],
   "confidence": 0.72,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/BalanceIndicator.tsx",
+    "frontend/src/components/AppLayout.tsx",
     "frontend/src/hooks/useQueries.ts",
+    "frontend/src/lib/backendError.ts",
     "project_state.json"
   ]
 }

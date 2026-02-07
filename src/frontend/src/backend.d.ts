@@ -29,5 +29,6 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getUserWalletAddress(_userId: bigint): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
+    onboarding(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }
