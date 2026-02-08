@@ -4,17 +4,25 @@ import { useInternetIdentity } from './useInternetIdentity';
 import type { UserProfile } from '../backend';
 import { Principal } from '@dfinity/principal';
 import { isAuthorizationError } from '@/lib/backendError';
+import { 
+  getAdminWalletBalanceQueryKey, 
+  getBalanceQueryKey, 
+  getUserProfileQueryKey,
+  getIsCallerAdminQueryKey
+} from '@/lib/queryKeys';
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const principalString = identity?.getPrincipal().toString();
 
   const query = useQuery<UserProfile | null>({
-    queryKey: ['currentUserProfile'],
+    queryKey: getUserProfileQueryKey(principalString),
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
       return await actor.getCallerUserProfile();
     },
-    enabled: !!actor && !actorFetching,
+    enabled: !!actor && !actorFetching && !!principalString,
     retry: false,
   });
 
@@ -27,7 +35,9 @@ export function useGetCallerUserProfile() {
 
 export function useSaveCallerUserProfile() {
   const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
+  const principalString = identity?.getPrincipal().toString();
 
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
@@ -35,7 +45,7 @@ export function useSaveCallerUserProfile() {
       return await actor.saveCallerUserProfile(profile);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+      queryClient.invalidateQueries({ queryKey: getUserProfileQueryKey(principalString) });
     },
   });
 }
@@ -44,28 +54,36 @@ export function useSaveCallerUserProfile() {
 export function useGetBalance() {
   const { actor, isFetching } = useActor();
   const { identity, isInitializing } = useInternetIdentity();
+  const principalString = identity?.getPrincipal().toString();
 
   const isAuthenticated = !!identity;
 
   return useQuery<bigint>({
-    queryKey: ['balance'],
+    queryKey: getBalanceQueryKey(principalString),
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
       return await actor.getBalance();
     },
-    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing,
-    retry: false,
+    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing && !!principalString,
+    retry: (failureCount, error) => {
+      // Don't retry on authorization errors
+      if (isAuthorizationError(error)) return false;
+      // Retry up to 2 times for other errors
+      return failureCount < 2;
+    },
+    retryDelay: 1000,
   });
 }
 
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
   const { identity, isInitializing } = useInternetIdentity();
+  const principalString = identity?.getPrincipal().toString();
 
   const isAuthenticated = !!identity;
 
   return useQuery<boolean>({
-    queryKey: ['isCallerAdmin'],
+    queryKey: getIsCallerAdminQueryKey(principalString),
     queryFn: async () => {
       if (!actor) return false;
       try {
@@ -75,7 +93,7 @@ export function useIsCallerAdmin() {
         return false;
       }
     },
-    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing,
+    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing && !!principalString,
     retry: false,
     placeholderData: false,
   });
@@ -87,13 +105,14 @@ export function useIsCallerAdmin() {
  * Throws error for non-auth failures so React Query sets error state.
  */
 export function useGetAdminWalletBalance() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
   const { identity, isInitializing } = useInternetIdentity();
+  const principalString = identity?.getPrincipal().toString();
 
   const isAuthenticated = !!identity;
 
   return useQuery<bigint | null>({
-    queryKey: ['adminWalletBalance'],
+    queryKey: getAdminWalletBalanceQueryKey(principalString),
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
       try {
@@ -109,7 +128,7 @@ export function useGetAdminWalletBalance() {
         throw error;
       }
     },
-    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing,
+    enabled: !!actor && !actorFetching && isAuthenticated && !isInitializing && !!principalString,
     retry: false,
     refetchOnWindowFocus: true,
     // Ensure stale data doesn't override error states
@@ -119,7 +138,9 @@ export function useGetAdminWalletBalance() {
 
 export function useDistributeFunds() {
   const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
+  const principalString = identity?.getPrincipal().toString();
 
   return useMutation({
     mutationFn: async ({ toUser, amount }: { toUser: Principal; amount: bigint }) => {
@@ -132,14 +153,14 @@ export function useDistributeFunds() {
     onSuccess: async () => {
       // Invalidate and immediately refetch both queries to update UI
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['adminWalletBalance'] }),
-        queryClient.invalidateQueries({ queryKey: ['balance'] }),
+        queryClient.invalidateQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) }),
+        queryClient.invalidateQueries({ queryKey: getBalanceQueryKey(principalString) }),
       ]);
       
       // Force immediate refetch
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] }),
-        queryClient.refetchQueries({ queryKey: ['balance'] }),
+        queryClient.refetchQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) }),
+        queryClient.refetchQueries({ queryKey: getBalanceQueryKey(principalString) }),
       ]);
     },
   });
@@ -147,7 +168,9 @@ export function useDistributeFunds() {
 
 export function useAdminTopUp() {
   const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
+  const principalString = identity?.getPrincipal().toString();
 
   return useMutation({
     mutationFn: async (amount: bigint) => {
@@ -159,15 +182,17 @@ export function useAdminTopUp() {
     },
     onSuccess: async () => {
       // Invalidate and immediately refetch admin wallet balance
-      await queryClient.invalidateQueries({ queryKey: ['adminWalletBalance'] });
-      await queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] });
+      await queryClient.invalidateQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) });
+      await queryClient.refetchQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) });
     },
   });
 }
 
 export function useOnboarding() {
   const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
+  const principalString = identity?.getPrincipal().toString();
 
   return useMutation({
     mutationFn: async () => {
@@ -177,14 +202,14 @@ export function useOnboarding() {
     onSuccess: async () => {
       // Invalidate and immediately refetch balance queries to update UI
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['balance'] }),
-        queryClient.invalidateQueries({ queryKey: ['adminWalletBalance'] }),
+        queryClient.invalidateQueries({ queryKey: getBalanceQueryKey(principalString) }),
+        queryClient.invalidateQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) }),
       ]);
       
       // Force immediate refetch
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['balance'] }),
-        queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] }),
+        queryClient.refetchQueries({ queryKey: getBalanceQueryKey(principalString) }),
+        queryClient.refetchQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) }),
       ]);
     },
   });

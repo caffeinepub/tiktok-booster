@@ -7,6 +7,7 @@ import AdminUsersPage from './pages/AdminUsersPage';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import SignUpPage from './pages/SignUpPage';
+import LoginPage from './pages/LoginPage';
 import AppLayout from './components/AppLayout';
 
 const rootRoute = createRootRoute({
@@ -61,6 +62,12 @@ const signUpRoute = createRoute({
   component: SignUpPage,
 });
 
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   creditsRoute,
@@ -70,6 +77,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   profileRoute,
   signUpRoute,
+  loginRoute,
 ]);
 
 const router = createRouter({ routeTree });

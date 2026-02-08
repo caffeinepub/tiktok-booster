@@ -2,12 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-dashboard-ui-so-it-never-shows-an-admin-wallet-balance-while-simultaneously-showing-an-admin-recognition-error-e-g-not-recognized-as-admin-the-admin-wallet-status-loading-not-logged-in-not-an-admin-error-success-must-be-derived-consistently-from-the-same-data-source-and-rendered-in-only-one-coherent-state-at-a-time",
-      "featureTitle": "Fix the Dashboard UI so it never shows an admin wallet balance while simultaneously showing an admin-recognition error (e.g., “Not recognized as admin”). The admin wallet status (loading / not logged in / not an admin / error / success) must be derived consistently from the same data source and rendered in only one coherent state at a time.",
+      "featureId": "feature-add-a-clearly-visible-log-in-option-for-unauthenticated-users-in-the-global-header-using-internet-identity-authentication-same-auth-mechanism-as-current-sign-up-flow-and-ensure-the-primary-call-to-action-reads-log-in-english-when-the-user-is-not-authenticated",
+      "featureTitle": "Add a clearly visible Log In option for unauthenticated users in the global header, using Internet Identity authentication (same auth mechanism as current Sign Up flow), and ensure the primary call-to-action reads \"Log In\" (English) when the user is not authenticated.",
       "files": [
-        "frontend/src/components/AdminDiagnosticsCard.tsx",
-        "frontend/src/hooks/useAdminWalletStatus.ts",
-        "frontend/src/pages/DashboardPage.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/components/AppHeader.tsx",
+        "frontend/src/pages/LoginPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -23,28 +23,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-admin-gating-logic-on-the-dashboard-so-admin-only-actions-e-g-distribute-funds-to-user-are-shown-based-on-a-single-canonical-admin-signal-that-cannot-disagree-with-the-displayed-admin-wallet-balance-e-g-treat-a-successful-admin-wallet-balance-fetch-as-sufficient-proof-of-admin-access-and-treat-a-null-unauthorized-response-as-non-admin",
-      "featureTitle": "Update admin gating logic on the Dashboard so admin-only actions (e.g., “Distribute Funds to User”) are shown based on a single canonical admin signal that cannot disagree with the displayed admin wallet balance (e.g., treat a successful admin wallet balance fetch as sufficient proof of admin access, and treat a null/unauthorized response as non-admin).",
+      "featureId": "feature-ensure-the-wallet-balance-ui-is-visible-and-correctly-populated-after-login-by-making-balance-loading-empty-error-states-explicit-in-the-ui-and-by-providing-a-clear-sign-in-prompt-when-the-user-is-not-authenticated-instead-of-silently-hiding-the-wallet-indicator",
+      "featureTitle": "Ensure the wallet/balance UI is visible and correctly populated after login by making balance loading/empty/error states explicit in the UI, and by providing a clear sign-in prompt when the user is not authenticated (instead of silently hiding the wallet indicator).",
       "files": [
-        "frontend/src/pages/DashboardPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-harden-the-admin-wallet-balance-query-error-handling-so-unauthorized-non-admin-is-not-falsely-inferred-from-non-auth-errors-ensure-only-true-authorization-failures-result-in-a-null-admin-wallet-balance-other-failures-must-surface-as-an-error-state-to-the-ui",
-      "featureTitle": "Harden the admin wallet balance query error handling so unauthorized/non-admin is not falsely inferred from non-auth errors. Ensure only true authorization failures result in a null admin wallet balance; other failures must surface as an error state to the UI.",
-      "files": [
+        "frontend/src/components/BalanceIndicator.tsx",
         "frontend/src/hooks/useQueries.ts",
         "frontend/src/lib/backendError.ts"
       ],
@@ -57,7 +39,7 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-2"
       ],
       "confidence": "high"
     }

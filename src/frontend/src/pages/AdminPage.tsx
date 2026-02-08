@@ -1,41 +1,95 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, BarChart3, Wallet, AlertCircle, Users, Plus, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ArrowLeft, BarChart3, Wallet, AlertCircle, Users, Plus, Loader2, RefreshCw, RotateCw, ShieldAlert, LogIn, Key, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
-import { useGetAdminWalletBalance, useAdminTopUp } from '@/hooks/useQueries';
+import { useAdminTopUp, useDistributeFunds } from '@/hooks/useQueries';
+import { useAdminWalletStatus } from '@/hooks/useAdminWalletStatus';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { formatBalance } from '@/lib/format';
 import { normalizeBackendError } from '@/lib/backendError';
+import { hasAdminTokenInUrl, hasAdminTokenInSession } from '@/utils/urlParams';
+import { getActorQueryKey, getAdminWalletBalanceQueryKey } from '@/lib/queryKeys';
+import { Principal } from '@dfinity/principal';
+
+const LONG_LOADING_THRESHOLD = 5000; // 5 seconds
 
 export default function AdminPage() {
-  const { data: adminBalance, isLoading: adminBalanceLoading, error: adminBalanceError } = useGetAdminWalletBalance();
+  const adminWalletStatus = useAdminWalletStatus();
+  const { identity } = useInternetIdentity();
   const topUpMutation = useAdminTopUp();
+  const distributeMutation = useDistributeFunds();
+  const queryClient = useQueryClient();
   
   const [topUpAmount, setTopUpAmount] = useState('');
-  const [validationError, setValidationError] = useState('');
+  const [topUpValidationError, setTopUpValidationError] = useState('');
+  
+  const [distributePrincipal, setDistributePrincipal] = useState('');
+  const [distributeAmount, setDistributeAmount] = useState('');
+  const [distributeValidationError, setDistributeValidationError] = useState('');
+  
+  const [showLongLoadingHint, setShowLongLoadingHint] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  // Show admin wallet section only if balance is not null (null = unauthorized/non-admin)
-  const showAdminWallet = adminBalance !== null;
+  const principalString = identity?.getPrincipal().toString();
+
+  // Track long loading state
+  useEffect(() => {
+    if (adminWalletStatus.status === 'loading') {
+      const timer = setTimeout(() => {
+        setShowLongLoadingHint(true);
+      }, LONG_LOADING_THRESHOLD);
+
+      return () => {
+        clearTimeout(timer);
+        setShowLongLoadingHint(false);
+      };
+    } else {
+      setShowLongLoadingHint(false);
+    }
+  }, [adminWalletStatus.status]);
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    setShowLongLoadingHint(false);
+    
+    try {
+      // Invalidate and refetch all relevant queries with correct per-identity keys
+      await queryClient.invalidateQueries({ queryKey: getActorQueryKey(principalString) });
+      await queryClient.invalidateQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) });
+      await queryClient.refetchQueries({ queryKey: getActorQueryKey(principalString) });
+      await queryClient.refetchQueries({ queryKey: getAdminWalletBalanceQueryKey(principalString) });
+    } catch (error) {
+      console.error('Retry failed:', error);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleHardReload = () => {
+    window.location.reload();
+  };
 
   const handleTopUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setValidationError('');
+    setTopUpValidationError('');
 
     // Validate amount
     const amount = parseFloat(topUpAmount);
     if (!topUpAmount || isNaN(amount) || amount <= 0) {
-      setValidationError('Please enter a valid amount greater than zero');
+      setTopUpValidationError('Please enter a valid amount greater than zero');
       return;
     }
 
     if (!Number.isInteger(amount)) {
-      setValidationError('Amount must be a whole number');
+      setTopUpValidationError('Amount must be a whole number');
       return;
     }
 
@@ -53,6 +107,57 @@ export default function AdminPage() {
     }
   };
 
+  const handleDistribute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDistributeValidationError('');
+
+    // Validate principal
+    if (!distributePrincipal.trim()) {
+      setDistributeValidationError('Please enter a Principal ID');
+      return;
+    }
+
+    let principal: Principal;
+    try {
+      principal = Principal.fromText(distributePrincipal.trim());
+    } catch (error) {
+      setDistributeValidationError('Invalid Principal ID format');
+      return;
+    }
+
+    // Validate amount
+    const amount = parseFloat(distributeAmount);
+    if (!distributeAmount || isNaN(amount) || amount <= 0) {
+      setDistributeValidationError('Please enter a valid amount greater than zero');
+      return;
+    }
+
+    if (!Number.isInteger(amount)) {
+      setDistributeValidationError('Amount must be a whole number');
+      return;
+    }
+
+    try {
+      await distributeMutation.mutateAsync({ toUser: principal, amount: BigInt(amount) });
+      toast.success('Funds distributed successfully!', {
+        description: `Sent ${amount} PKR to user`,
+      });
+      setDistributePrincipal('');
+      setDistributeAmount('');
+    } catch (error) {
+      const errorMessage = normalizeBackendError(error);
+      toast.error('Failed to distribute funds', {
+        description: errorMessage,
+      });
+    }
+  };
+
+  // Determine unauthorized reason for better messaging
+  const isLoggedIn = !!identity;
+  const hasTokenInUrl = hasAdminTokenInUrl();
+  const hasTokenInSession = hasAdminTokenInSession();
+  const isAdminSuccess = adminWalletStatus.status === 'success';
+
   return (
     <div className="min-h-screen">
       <AppHeader />
@@ -68,137 +173,329 @@ export default function AdminPage() {
             </Button>
           </div>
 
-          {showAdminWallet ? (
-            <>
-              <Card className="border-2 mb-8">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <BarChart3 className="w-8 h-8 text-primary" />
-                    <div>
-                      <CardTitle className="text-3xl">Admin Analytics</CardTitle>
-                      <CardDescription className="text-base">
-                        Overview of system statistics and wallet balance
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted/50 rounded-lg p-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wallet className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Admin Wallet Balance</p>
-                    </div>
-                    {adminBalanceLoading ? (
-                      <Skeleton className="h-12 w-32" />
-                    ) : adminBalanceError ? (
-                      <Alert variant="destructive" className="mt-2">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          {normalizeBackendError(adminBalanceError)}
-                        </AlertDescription>
-                      </Alert>
-                    ) : adminBalance !== undefined && adminBalance !== null ? (
-                      <p className="text-4xl font-bold text-primary">
-                        {formatBalance(adminBalance)} <span className="text-2xl text-muted-foreground">PKR</span>
-                      </p>
-                    ) : (
-                      <Alert className="mt-2">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          Admin wallet balance unavailable
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-2 mb-8">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <Plus className="w-6 h-6 text-primary" />
-                    <div>
-                      <CardTitle className="text-2xl">Admin Wallet Top Up</CardTitle>
-                      <CardDescription>
-                        Add funds to the admin wallet to distribute to users
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleTopUp} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="topUpAmount">Amount (PKR)</Label>
-                      <Input
-                        id="topUpAmount"
-                        type="number"
-                        placeholder="Enter amount to add"
-                        value={topUpAmount}
-                        onChange={(e) => {
-                          setTopUpAmount(e.target.value);
-                          setValidationError('');
-                        }}
-                        disabled={topUpMutation.isPending}
-                        min="1"
-                        step="1"
-                      />
-                      {validationError && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>{validationError}</AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
-                    <Button 
-                      type="submit" 
-                      disabled={topUpMutation.isPending || !topUpAmount}
-                      className="w-full"
-                    >
-                      {topUpMutation.isPending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Top Up Admin Wallet
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card className="border-2">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <Users className="w-6 h-6 text-primary" />
-                    <div>
-                      <CardTitle className="text-2xl">User Management</CardTitle>
-                      <CardDescription>
-                        View and manage all registered users
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="w-full">
-                    <Link to="/admin/users">
-                      <Users className="w-4 h-4 mr-2" />
-                      View All Users
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You do not have permission to access this page. Admin access required.
+          {adminWalletStatus.status === 'not-logged-in' && (
+            <Alert>
+              <LogIn className="h-5 w-5" />
+              <AlertTitle className="text-lg font-semibold">Login Required</AlertTitle>
+              <AlertDescription className="mt-2">
+                <p className="mb-3">You need to log in with Internet Identity to access the admin panel.</p>
+                <p className="text-sm text-muted-foreground">
+                  Click the "Login" button in the header to authenticate with your Internet Identity.
+                </p>
               </AlertDescription>
             </Alert>
+          )}
+
+          {adminWalletStatus.status === 'loading' && (
+            <Card className="border-2">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  <div>
+                    <CardTitle className="text-3xl">Loading Admin Panel...</CardTitle>
+                    <CardDescription className="text-base">
+                      Verifying admin access
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-12 w-32" />
+                  
+                  {showLongLoadingHint && (
+                    <Alert className="mt-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <span className="text-sm">This is taking longer than expected. You can try refreshing the connection.</span>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <Button 
+                              onClick={handleRetry} 
+                              disabled={isRetrying}
+                              variant="outline"
+                              size="sm"
+                            >
+                              {isRetrying ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Retrying...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="w-4 h-4 mr-2" />
+                                  Retry
+                                </>
+                              )}
+                            </Button>
+                            <Button 
+                              onClick={handleHardReload}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <RotateCw className="w-4 h-4 mr-2" />
+                              Reload Page
+                            </Button>
+                          </div>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {adminWalletStatus.status === 'unauthorized' && (
+            <Alert variant="destructive">
+              <ShieldAlert className="h-5 w-5" />
+              <AlertTitle className="text-lg font-semibold">Access Denied</AlertTitle>
+              <AlertDescription className="mt-2 space-y-3">
+                {isLoggedIn ? (
+                  <>
+                    <p>You are logged in, but your account does not have admin permissions.</p>
+                    {!hasTokenInUrl && !hasTokenInSession ? (
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mt-3">
+                        <div className="flex items-start gap-2">
+                          <Key className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          <div className="text-sm">
+                            <p className="font-medium mb-1">Missing Admin Token</p>
+                            <p className="text-muted-foreground">
+                              Admin access requires the <code className="bg-background/50 px-1 py-0.5 rounded text-xs">caffeineAdminToken</code> parameter in the URL. 
+                              Please use the admin link that includes this token.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Contact a system administrator to grant admin permissions to your account.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p>Please log in to access the admin panel.</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {adminWalletStatus.status === 'error' && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-5 w-5" />
+              <AlertTitle className="text-lg font-semibold">Error Loading Admin Panel</AlertTitle>
+              <AlertDescription className="mt-2">
+                <p className="mb-3">{adminWalletStatus.message}</p>
+                <div className="flex gap-2">
+                  <Button onClick={handleRetry} disabled={isRetrying} variant="outline" size="sm">
+                    {isRetrying ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Retry
+                      </>
+                    )}
+                  </Button>
+                  <Button onClick={handleHardReload} variant="outline" size="sm">
+                    <RotateCw className="w-4 h-4 mr-2" />
+                    Reload Page
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {adminWalletStatus.status === 'success' && (
+            <>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Admin Wallet Balance</CardTitle>
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatBalance(adminWalletStatus.balance)}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Available for distribution
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <Button asChild className="w-full" variant="outline">
+                      <Link to="/admin/users">
+                        <Users className="w-4 h-4 mr-2" />
+                        View All Users
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Top Up Admin Wallet */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Plus className="w-5 h-5" />
+                      Top Up Admin Wallet
+                    </CardTitle>
+                    <CardDescription>
+                      Add funds to the admin wallet for distribution
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleTopUp} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="topUpAmount">Amount (PKR)</Label>
+                        <Input
+                          id="topUpAmount"
+                          type="number"
+                          placeholder="Enter amount"
+                          value={topUpAmount}
+                          onChange={(e) => setTopUpAmount(e.target.value)}
+                          disabled={topUpMutation.isPending}
+                        />
+                        {topUpValidationError && (
+                          <p className="text-sm text-destructive">{topUpValidationError}</p>
+                        )}
+                      </div>
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={topUpMutation.isPending}
+                      >
+                        {topUpMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Top Up Wallet
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Distribute Funds */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Send className="w-5 h-5" />
+                      Distribute Funds to User
+                    </CardTitle>
+                    <CardDescription>
+                      Send funds from admin wallet to a user
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleDistribute} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="distributePrincipal">User Principal ID</Label>
+                        <Input
+                          id="distributePrincipal"
+                          type="text"
+                          placeholder="Enter Principal ID"
+                          value={distributePrincipal}
+                          onChange={(e) => setDistributePrincipal(e.target.value)}
+                          disabled={distributeMutation.isPending}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="distributeAmount">Amount (PKR)</Label>
+                        <Input
+                          id="distributeAmount"
+                          type="number"
+                          placeholder="Enter amount"
+                          value={distributeAmount}
+                          onChange={(e) => setDistributeAmount(e.target.value)}
+                          disabled={distributeMutation.isPending}
+                        />
+                        {distributeValidationError && (
+                          <p className="text-sm text-destructive">{distributeValidationError}</p>
+                        )}
+                      </div>
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={distributeMutation.isPending}
+                      >
+                        {distributeMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Distributing...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Distribute Funds
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+
+          {/* Show disabled distribute section for non-admin users */}
+          {!isAdminSuccess && isLoggedIn && (
+            <div className="mt-8">
+              <Card className="opacity-60">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Send className="w-5 h-5" />
+                    Distribute Funds to User
+                  </CardTitle>
+                  <CardDescription>
+                    {adminWalletStatus.status === 'unauthorized' 
+                      ? 'Admin access required to distribute funds'
+                      : 'This feature requires admin permissions'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="distributePrincipalDisabled">User Principal ID</Label>
+                      <Input
+                        id="distributePrincipalDisabled"
+                        type="text"
+                        placeholder="Enter Principal ID"
+                        disabled
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="distributeAmountDisabled">Amount (PKR)</Label>
+                      <Input
+                        id="distributeAmountDisabled"
+                        type="number"
+                        placeholder="Enter amount"
+                        disabled
+                      />
+                    </div>
+                    <Button className="w-full" disabled>
+                      <Send className="w-4 h-4 mr-2" />
+                      Distribute Funds
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       </main>

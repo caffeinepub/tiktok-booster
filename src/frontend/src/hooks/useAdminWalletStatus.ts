@@ -1,6 +1,9 @@
 import { useGetAdminWalletBalance } from './useQueries';
 import { useInternetIdentity } from './useInternetIdentity';
+import { useActor } from './useActor';
+import { useQueryClient } from '@tanstack/react-query';
 import { isAuthorizationError } from '@/lib/backendError';
+import { getActorQueryKey } from '@/lib/queryKeys';
 
 /**
  * Canonical admin wallet UI state.
@@ -15,11 +18,20 @@ export type AdminWalletUIState =
 
 export function useAdminWalletStatus(): AdminWalletUIState {
   const { identity, isInitializing } = useInternetIdentity();
+  const { actor, isFetching: actorFetching } = useActor();
+  const queryClient = useQueryClient();
+  const principalString = identity?.getPrincipal().toString();
+  
+  // Access the actor query state directly to check initialization status
+  const actorQueryState = queryClient.getQueryState(getActorQueryKey(principalString));
+  const isActorLoading = actorQueryState?.fetchStatus === 'fetching' && !actorQueryState?.data;
+  const actorError = actorQueryState?.error;
+  
   const { 
     data: adminBalance, 
     isLoading, 
-    error,
-    isFetched 
+    isFetching,
+    error
   } = useGetAdminWalletBalance();
 
   const isAuthenticated = !!identity;
@@ -29,8 +41,16 @@ export function useAdminWalletStatus(): AdminWalletUIState {
     return { status: 'not-logged-in' };
   }
 
-  // Loading (including initial auth)
-  if (isInitializing || isLoading || !isFetched) {
+  // Actor initialization failed
+  if (actorError && !actor) {
+    const errorMessage = actorError instanceof Error 
+      ? actorError.message 
+      : 'Failed to initialize backend connection';
+    return { status: 'error', message: errorMessage };
+  }
+
+  // Loading: identity initializing, actor initializing, or query actively loading/fetching
+  if (isInitializing || isActorLoading || actorFetching || !actor || isLoading || isFetching) {
     return { status: 'loading' };
   }
 
@@ -57,6 +77,6 @@ export function useAdminWalletStatus(): AdminWalletUIState {
     return { status: 'success', balance: adminBalance };
   }
 
-  // Fallback to loading if we somehow get here
-  return { status: 'loading' };
+  // If query is not enabled and hasn't run, return error instead of loading
+  return { status: 'error', message: 'Unable to load admin wallet status' };
 }

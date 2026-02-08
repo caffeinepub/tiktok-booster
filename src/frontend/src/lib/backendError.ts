@@ -1,6 +1,6 @@
 /**
  * Normalizes backend error messages into user-friendly English messages.
- * Handles authorization errors, insufficient balance, admin wallet errors, and validation errors.
+ * Handles authorization errors, insufficient balance, admin wallet errors, validation errors, and IC replica rejections.
  */
 export function normalizeBackendError(error: unknown): string {
   if (!error) return 'An unknown error occurred';
@@ -8,6 +8,23 @@ export function normalizeBackendError(error: unknown): string {
   const errorMessage = typeof error === 'string' 
     ? error 
     : (error as any)?.message || String(error);
+
+  // IC Replica rejection errors (IC0508, canister stopped, etc.)
+  if (
+    errorMessage.includes('IC0508') ||
+    errorMessage.includes('is stopped') ||
+    errorMessage.includes('replica returned a rejection error') ||
+    errorMessage.includes('Canister') && errorMessage.includes('stopped') ||
+    errorMessage.includes('reject_code') ||
+    errorMessage.includes('non_replicated_rejection')
+  ) {
+    return 'Backend canister is temporarily unavailable. Please try again or reload the page.';
+  }
+
+  // Authorization system not ready
+  if (errorMessage.includes('Authorization system not ready')) {
+    return 'System is initializing. Please reload the page and try again.';
+  }
 
   // Authorization errors
   if (errorMessage.includes('Unauthorized') || errorMessage.includes('Only admin')) {

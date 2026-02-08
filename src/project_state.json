@@ -4,37 +4,39 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Dashboard shows admin wallet balance but also displays an error message like \"admin wallet not recognize\" (wallet recognition/validation mismatch)."
+    "Login option is missing in the app UI.",
+    "Wallet/balance is not showing (admin balance/options not visible)."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-fix-the-dashboard-ui-so-it-never-shows-an-admin-wallet-balance-while-simultaneously-showing-an-admin-recognition-error-e-g-not-recognized-as-admin-the-admin-wallet-status-loading-not-logged-in-not-an-admin-error-success-must-be-derived-consistently-from-the-same-data-source-and-rendered-in-only-one-coherent-state-at-a-time",
-      "title": "Fix the Dashboard UI so it never shows an admin wallet balance while simultaneously showing an admin-recognition error (e.g., “Not recognized as admin”). The admin wallet status (loading / not logged in / not an admin / error / success) must be derived consistently from the same data source and rendered in only one coherent state at a time.",
+      "id": "feature-add-a-clearly-visible-log-in-option-for-unauthenticated-users-in-the-global-header-using-internet-identity-authentication-same-auth-mechanism-as-current-sign-up-flow-and-ensure-the-primary-call-to-action-reads-log-in-english-when-the-user-is-not-authenticated",
+      "title": "Add a clearly visible Log In option for unauthenticated users in the global header, using Internet Identity authentication (same auth mechanism as current Sign Up flow), and ensure the primary call-to-action reads \"Log In\" (English) when the user is not authenticated.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-update-admin-gating-logic-on-the-dashboard-so-admin-only-actions-e-g-distribute-funds-to-user-are-shown-based-on-a-single-canonical-admin-signal-that-cannot-disagree-with-the-displayed-admin-wallet-balance-e-g-treat-a-successful-admin-wallet-balance-fetch-as-sufficient-proof-of-admin-access-and-treat-a-null-unauthorized-response-as-non-admin",
-      "title": "Update admin gating logic on the Dashboard so admin-only actions (e.g., “Distribute Funds to User”) are shown based on a single canonical admin signal that cannot disagree with the displayed admin wallet balance (e.g., treat a successful admin wallet balance fetch as sufficient proof of admin access, and treat a null/unauthorized response as non-admin).",
+      "id": "feature-ensure-the-wallet-balance-ui-is-visible-and-correctly-populated-after-login-by-making-balance-loading-empty-error-states-explicit-in-the-ui-and-by-providing-a-clear-sign-in-prompt-when-the-user-is-not-authenticated-instead-of-silently-hiding-the-wallet-indicator",
+      "title": "Ensure the wallet/balance UI is visible and correctly populated after login by making balance loading/empty/error states explicit in the UI, and by providing a clear sign-in prompt when the user is not authenticated (instead of silently hiding the wallet indicator).",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
-    },
+    }
+  ],
+  "new_feature_requests": [
     {
-      "id": "feature-harden-the-admin-wallet-balance-query-error-handling-so-unauthorized-non-admin-is-not-falsely-inferred-from-non-auth-errors-ensure-only-true-authorization-failures-result-in-a-null-admin-wallet-balance-other-failures-must-surface-as-an-error-state-to-the-ui",
-      "title": "Harden the admin wallet balance query error handling so unauthorized/non-admin is not falsely inferred from non-auth errors. Ensure only true authorization failures result in a null admin wallet balance; other failures must surface as an error state to the UI.",
+      "id": "AR-3",
+      "summary": "Fix backend authorization initialization so that authenticated users can call onboarding and wallet/balance methods without hitting the \"Authorization system not ready\" trap, and ensure initialization/admin recognition is not lost across canister upgrades.",
       "reqIds": [
         "REQ-3"
       ],
-      "version": 1
+      "status": "pending"
     }
   ],
-  "new_feature_requests": [],
-  "projectName": "Fix inconsistent admin wallet recognition message in Dashboard",
+  "projectName": "Add visible Log In option and fix wallet/balance display",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

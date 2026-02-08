@@ -1,68 +1,57 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Unify Dashboard admin wallet/admin recognition into a single canonical state",
+  "title": "Visible Log In CTA in header + explicit wallet/balance states",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Derive and render the Dashboard admin wallet status from one canonical source so balance and admin-recognition messaging can never disagree.",
+      "summary": "Add a prominent \"Log In\" action in the global header for unauthenticated users using the existing Internet Identity flow, and hide it when authenticated.",
       "acceptanceCriteria": [
-        "When the admin wallet balance renders as a number, the UI does not render any 'not recognized as admin'/'unauthorized' messaging anywhere on the Dashboard for the same session.",
-        "When the caller is not an admin, the Dashboard shows only the 'not an admin' messaging and does not show an admin wallet balance.",
-        "When the admin wallet balance request fails for reasons other than authorization, the Dashboard shows an error state (not the 'not an admin' state).",
-        "All user-facing status strings remain in English."
+        "When the user is not authenticated, the header shows a visible button labeled \"Log In\" (English).",
+        "Clicking \"Log In\" initiates (or routes to a screen that initiates) Internet Identity login and returns the user to the app authenticated.",
+        "When the user is authenticated, the header does not show \"Log In\" and instead shows the authenticated-state navigation (e.g., Profile)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useAdminWalletStatus.ts",
+          "path": "frontend/src/components/AppHeader.tsx",
+          "operation": "modify",
+          "description": "Update the unauthenticated primary call-to-action to be a clearly visible \"Log In\" button (English) and wire it to the Internet Identity login entry route; keep the authenticated state showing the existing Profile navigation. Use the selected \"authorization\" component's Internet Identity context (useInternetIdentity) as the auth mechanism; verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/LoginPage.tsx",
           "operation": "create",
-          "description": "Create a small hook that converts useGetAdminWalletBalance() + authentication state into a single discriminated admin-wallet UI state (e.g., not-logged-in/loading/unauthorized/error/success) and exposes balance only for the success state."
+          "description": "Create a dedicated Log In screen that initiates Internet Identity login (reusing the existing auth mechanism from the selected \"authorization\" component) and, on success, routes the user back into the app in an authenticated state. Ensure all user-facing text is English. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/pages/DashboardPage.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Refactor the Dashboard admin wallet badge + top card to render strictly from the canonical admin wallet UI state (from useAdminWalletStatus) so only one coherent state is shown at a time; ensure error state takes precedence over any cached/stale balance, and ensure the unauthorized message renders only when the canonical state is unauthorized."
-        },
-        {
-          "path": "frontend/src/components/AdminDiagnosticsCard.tsx",
-          "operation": "modify",
-          "description": "Update AdminDiagnosticsCard to use the same canonical admin wallet UI state for wallet status/balance rendering so it cannot contradict the Dashboard admin wallet display; do not gate its visibility based on a separate admin signal that can disagree with the wallet status."
+          "description": "Register a new \"/login\" route that renders the new LoginPage and ensure it is included in the router tree so the header button can navigate to it."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Show/hide Dashboard admin-only actions using the same canonical admin signal as the displayed admin wallet balance.",
+      "summary": "Make wallet/balance UI always present with explicit unauthenticated, loading, value, and error states plus a retry control.",
       "acceptanceCriteria": [
-        "If the admin wallet balance is successfully fetched (non-null), the “Distribute Funds to User” card is available on the Dashboard.",
-        "If the admin wallet balance is null due to authorization, the “Distribute Funds to User” card is not shown.",
-        "There is no state where admin-only actions are hidden while an admin wallet balance is displayed."
+        "When the user is authenticated, the wallet/balance indicator renders and shows either a loading state or a numeric balance value (not blank).",
+        "When the user is not authenticated, the UI shows an English sign-in prompt for wallet/balance access (rather than the wallet area appearing missing).",
+        "If balance fetching fails, the user sees an English error message and a retry/refresh control that re-attempts the balance query."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/DashboardPage.tsx",
+          "path": "frontend/src/components/BalanceIndicator.tsx",
           "operation": "modify",
-          "description": "Remove dependence on useIsCallerAdmin() for Dashboard admin-only action gating; show the “Distribute Funds to User” card whenever the canonical admin wallet UI state is success (balance available), and hide it for unauthorized/loading/error/not-logged-in states so it can never disagree with the displayed admin wallet balance."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Differentiate authorization failures from non-auth failures in the admin wallet balance query so only true auth failures map to null and all other failures surface as errors.",
-      "acceptanceCriteria": [
-        "A non-auth backend failure (e.g., temporary actor/connection issue) results in an error state in the Dashboard admin wallet UI, not a 'Not recognized as admin' state.",
-        "A true backend authorization failure results in a 'not an admin/unauthorized' UI state and a null admin wallet balance in React Query data."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/lib/backendError.ts",
-          "operation": "modify",
-          "description": "Add a shared helper (e.g., isAuthorizationError(error: unknown): boolean) to reliably classify true authorization failures based on backend trap/message patterns, distinct from network/actor/other runtime failures."
+          "description": "Replace the current behavior that returns null when unauthenticated with a visible wallet area that prompts the user (in English) to \"Log In\" for balance access (e.g., link/button to \"/login\"). For authenticated users, render explicit states: loading indicator while fetching, formatted numeric balance on success, and an English error message on failure with a retry/refresh control that re-attempts the balance query (and admin wallet refetch when applicable). Use the selected \"authorization\" component's Internet Identity state (useInternetIdentity) to determine authenticated vs unauthenticated UI; verify the component's usage instructions before implementing."
         },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Harden useGetAdminWalletBalance() to return null only when isAuthorizationError(...) is true; otherwise rethrow so React Query sets an error state. Also ensure Dashboard consumers can prefer the query error state over any cached data to avoid false 'success + unauthorized' mismatches."
+          "description": "Ensure balance querying exposes error state to the UI cleanly (e.g., allow consumers to access isError/error from the React Query result) while keeping balance queries disabled when unauthenticated; keep user-facing strings out of hooks."
+        },
+        {
+          "path": "frontend/src/lib/backendError.ts",
+          "operation": "modify",
+          "description": "Add/adjust normalization for wallet/onboarding-related authorization initialization failures (e.g., messages containing \"Authorization system not ready\") to an English, user-actionable message suitable for the BalanceIndicator error state."
         }
       ]
     }

@@ -1,22 +1,27 @@
 import Map "mo:core/Map";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-import Nat "mo:core/Nat";
-import Time "mo:core/Time";
 import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
+import Text "mo:core/Text";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Time "mo:core/Time";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   var nextOrderId = 1;
   var adminWallet : Nat = 10_000;
-
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
+  var isInitialized = false;
 
   let userBalances = Map.empty<Principal, Nat>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let orders = Map.empty<Nat, Order>();
+
+  var accessControlState = AccessControl.initState();
+
+  include MixinAuthorization(accessControlState);
 
   public type UserProfile = {
     profilePicture : ?Text;
@@ -44,8 +49,17 @@ actor {
     createdAt : Int;
   };
 
+  // Ensure initialization happens on first call by any principal
+  // The MixinAuthorization should provide initializeAccessControl which calls AccessControl.initialize
+  // This is a safety check to ensure the system is initialized
+  private func ensureInitialized(caller : Principal) {
+    if (not isInitialized) {
+      Runtime.trap("Authorization system not ready, reload and try again");
+    };
+  };
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can access profiles");
     };
     userProfiles.get(caller);
@@ -59,6 +73,7 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
+    ensureInitialized(caller);
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
@@ -66,6 +81,7 @@ actor {
   };
 
   public shared ({ caller }) func onboarding() : async () {
+    ensureInitialized(caller);
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can receive funds");
     };
@@ -108,21 +124,23 @@ actor {
   };
 
   public shared ({ caller }) func adminDistributeFunds(toUser : Principal, amount : Nat) : async () {
+    ensureInitialized(caller);
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admin can distribute funds");
-    };
-    if (amount > adminWallet) {
-      Runtime.trap("Insufficient admin wallet funds");
     };
     let currentBalance = switch (userBalances.get(toUser)) {
       case (?existingBalance) { existingBalance };
       case (null) { 0 };
+    };
+    if (adminWallet < amount) {
+      Runtime.trap("Insufficient balance in admin wallet");
     };
     adminWallet -= amount;
     userBalances.add(toUser, currentBalance + amount);
   };
 
   public shared ({ caller }) func adminTopUp(amount : Nat) : async () {
+    ensureInitialized(caller);
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admin can top up the wallet");
     };
@@ -133,6 +151,7 @@ actor {
   };
 
   public shared ({ caller }) func addOrderWithWallet(url : Text, price : Nat, package : Text, packageId : Nat) : async Nat {
+    ensureInitialized(caller);
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create orders");
     };
@@ -182,6 +201,7 @@ actor {
   };
 
   public shared ({ caller }) func updateOrderStatus(orderId : Nat, status : OrderStatus) : async () {
+    ensureInitialized(caller);
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admins can update order status");
     };

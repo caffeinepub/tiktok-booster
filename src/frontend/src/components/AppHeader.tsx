@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { User, UserPlus } from 'lucide-react';
+import { User, LogIn } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 
@@ -50,10 +50,10 @@ export default function AppHeader() {
             </Button>
           </Link>
         ) : (
-          <Link to="/signup">
+          <Link to="/login">
             <Button variant="default" size="sm" className="gap-2">
-              <UserPlus className="w-4 h-4" />
-              <span className="hidden sm:inline">Sign Up</span>
+              <LogIn className="w-4 h-4" />
+              <span className="hidden sm:inline">Log In</span>
             </Button>
           </Link>
         )}

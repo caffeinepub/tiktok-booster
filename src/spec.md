@@ -1,12 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Make the Dashboard admin wallet status consistent so it never shows an admin wallet balance alongside “Not recognized as admin”/unauthorized messaging, and ensure admin-only actions are gated by the same canonical signal.
+**Goal:** Make authentication and wallet/balance status clearly visible, and fix authorization initialization so logged-in users can reliably access onboarding and balance features.
 
 **Planned changes:**
-- Refactor Dashboard admin wallet UI state handling so loading / not logged in / not an admin (unauthorized) / error / success are derived from a single canonical data source and rendered as one coherent state at a time.
-- Update admin gating for admin-only Dashboard actions (e.g., “Distribute Funds to User”) to rely on the same canonical admin signal as the displayed admin wallet balance (successful non-null balance implies admin; unauthorized/null implies non-admin).
-- Harden admin wallet balance query error handling so non-auth failures show an error state, while only true authorization failures produce a null balance and the “not an admin/unauthorized” state.
-- Ensure all user-facing status strings remain in English.
+- Add a clearly visible global-header action for unauthenticated users labeled **"Log In"** that uses the existing Internet Identity authentication flow (same mechanism as Sign Up) and returns the user to the app authenticated.
+- Update header behavior so **"Log In"** is shown only when unauthenticated, and authenticated-state navigation (e.g., Profile) is shown when authenticated.
+- Make the wallet/balance area always explicit in the UI: show an English sign-in prompt when unauthenticated; show loading state and then a numeric balance when authenticated; show an English error plus retry/refresh control when balance fetch fails.
+- Fix backend authorization initialization so onboarding() and getBalance() work after deploy/upgrade without "Authorization system not ready", and ensure admin recognition/permissions persist across upgrades.
 
-**User-visible outcome:** The Dashboard will no longer display contradictory admin status (balance shown while also saying not admin); admin-only actions appear whenever the admin wallet balance is successfully fetched, and real errors are shown as errors rather than “not an admin.”
+**User-visible outcome:** Unauthenticated users see a prominent **Log In** option in the header and clear wallet access messaging; authenticated users see a visible wallet/balance indicator that loads reliably (or shows a clear error with retry), and backend calls no longer fail due to authorization initialization after upgrades.

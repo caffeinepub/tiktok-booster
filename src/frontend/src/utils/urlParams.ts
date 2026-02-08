@@ -206,3 +206,27 @@ export function getSecretFromHash(paramName: string): string | null {
 export function getSecretParameter(paramName: string): string | null {
     return getSecretFromHash(paramName);
 }
+
+/**
+ * Checks if the admin token is present in the URL
+ * @returns true if admin token is found in URL, false otherwise
+ */
+export function hasAdminTokenInUrl(): boolean {
+    const hash = window.location.hash;
+    if (!hash || hash.length <= 1) {
+        return false;
+    }
+
+    const hashContent = hash.substring(1);
+    const params = new URLSearchParams(hashContent);
+    return params.has('caffeineAdminToken');
+}
+
+/**
+ * Checks if the admin token is present in session storage
+ * @returns true if admin token is found in session, false otherwise
+ */
+export function hasAdminTokenInSession(): boolean {
+    const token = getSessionParameter('caffeineAdminToken');
+    return token !== null && token.length > 0;
+}

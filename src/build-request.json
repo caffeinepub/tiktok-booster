@@ -1,72 +1,72 @@
 {
   "kind": "build_request",
-  "title": "Fix inconsistent admin wallet recognition message in Dashboard",
-  "priority": "normal",
+  "title": "Add visible Log In option and fix wallet/balance display",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix the Dashboard UI so it never shows an admin wallet balance while simultaneously showing an admin-recognition error (e.g., “Not recognized as admin”). The admin wallet status (loading / not logged in / not an admin / error / success) must be derived consistently from the same data source and rendered in only one coherent state at a time.",
+      "text": "Add a clearly visible Log In option for unauthenticated users in the global header, using Internet Identity authentication (same auth mechanism as current Sign Up flow), and ensure the primary call-to-action reads \"Log In\" (English) when the user is not authenticated.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-4"
         ],
         "quotes": [
-          "Udhar admin wallet show ho gaya g lakin ya likha aya raha h k admin wallet not recognize why?"
+          "Ap na yaha log in k oppotion nii dia or wallet show nii ho raha"
         ]
       },
       "acceptanceCriteria": [
-        "When the admin wallet balance renders as a number, the UI does not render any 'not recognized as admin'/'unauthorized' messaging anywhere on the Dashboard for the same session.",
-        "When the caller is not an admin, the Dashboard shows only the 'not an admin' messaging and does not show an admin wallet balance.",
-        "When the admin wallet balance request fails for reasons other than authorization, the Dashboard shows an error state (not the 'not an admin' state).",
-        "All user-facing status strings remain in English."
+        "When the user is not authenticated, the header shows a visible button labeled \"Log In\" (English).",
+        "Clicking \"Log In\" initiates (or routes to a screen that initiates) Internet Identity login and returns the user to the app authenticated.",
+        "When the user is authenticated, the header does not show \"Log In\" and instead shows the authenticated-state navigation (e.g., Profile)."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update admin gating logic on the Dashboard so admin-only actions (e.g., “Distribute Funds to User”) are shown based on a single canonical admin signal that cannot disagree with the displayed admin wallet balance (e.g., treat a successful admin wallet balance fetch as sufficient proof of admin access, and treat a null/unauthorized response as non-admin).",
+      "text": "Ensure the wallet/balance UI is visible and correctly populated after login by making balance loading/empty/error states explicit in the UI, and by providing a clear sign-in prompt when the user is not authenticated (instead of silently hiding the wallet indicator).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-4"
         ],
         "quotes": [
-          "admin wallet not recognize"
+          "... wallet show nii ho raha"
         ]
       },
       "acceptanceCriteria": [
-        "If the admin wallet balance is successfully fetched (non-null), the “Distribute Funds to User” card is available on the Dashboard.",
-        "If the admin wallet balance is null due to authorization, the “Distribute Funds to User” card is not shown.",
-        "There is no state where admin-only actions are hidden while an admin wallet balance is displayed."
+        "When the user is authenticated, the wallet/balance indicator renders and shows either a loading state or a numeric balance value (not blank).",
+        "When the user is not authenticated, the UI shows an English sign-in prompt for wallet/balance access (rather than the wallet area appearing missing).",
+        "If balance fetching fails, the user sees an English error message and a retry/refresh control that re-attempts the balance query."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Harden the admin wallet balance query error handling so unauthorized/non-admin is not falsely inferred from non-auth errors. Ensure only true authorization failures result in a null admin wallet balance; other failures must surface as an error state to the UI.",
-      "target": "frontend",
+      "text": "Fix backend authorization initialization so that authenticated users can call onboarding and wallet/balance methods without hitting the \"Authorization system not ready\" trap, and ensure initialization/admin recognition is not lost across canister upgrades.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-4"
         ],
         "quotes": [
-          "admin wallet not recognize"
+          "... wallet show nii ho raha"
         ]
       },
       "acceptanceCriteria": [
-        "A non-auth backend failure (e.g., temporary actor/connection issue) results in an error state in the Dashboard admin wallet UI, not a 'Not recognized as admin' state.",
-        "A true backend authorization failure results in a 'not an admin/unauthorized' UI state and a null admin wallet balance in React Query data."
+        "After deployment/upgrade, authenticated users can successfully call onboarding() and getBalance() without receiving \"Authorization system not ready, reload and try again\".",
+        "Admin-only methods (e.g., getAdminWalletBalance, adminDistributeFunds, adminTopUp) work for principals with admin permissions after redeployments/upgrades.",
+        "If initialization is required, it occurs automatically (no manual steps) before any user-facing flow depends on it."
       ]
     }
   ],
   "constraints": [
-    "Do not edit files under frontend/src/components/ui (Shadcn components are read-only).",
-    "Do not edit frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, or frontend/src/main.tsx (immutable paths).",
-    "Backend must remain a single Motoko actor in backend/main.mo; only add migration.mo if a state upgrade is required."
+    "Backend must remain a single Motoko actor in backend/main.mo; introduce backend/migration.mo changes only if state upgrade is required by the fix.",
+    "Do not edit any files under frontend/src/components/ui or other paths listed as immutable in SYSTEM_CONTEXT.",
+    "All user-facing text introduced/modified by this change must be in English."
   ],
   "nonGoals": [
-    "Do not add new authentication providers (only Internet Identity is supported).",
-    "Do not add real-time features (WebSockets/push/chat).",
-    "Do not redesign unrelated pages or add new product features beyond fixing the admin recognition/status mismatch."
+    "Add any non-Internet-Identity authentication provider (e.g., Google, Facebook, Auth0).",
+    "Integrate external wallets or web3 wallet providers (e.g., MetaMask, WalletConnect).",
+    "Add external databases or non-Motoko backend services."
   ],
   "imageRequirements": {
     "required": [],

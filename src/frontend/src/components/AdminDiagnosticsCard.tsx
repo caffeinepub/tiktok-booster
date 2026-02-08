@@ -1,14 +1,21 @@
 import { useIsCallerAdmin } from '@/hooks/useQueries';
 import { useAdminWalletStatus } from '@/hooks/useAdminWalletStatus';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { formatBalance } from '@/lib/format';
 import { normalizeBackendError } from '@/lib/backendError';
+import { hasAdminTokenInUrl, hasAdminTokenInSession } from '@/utils/urlParams';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShieldCheck, Wallet, Loader2, XCircle, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Wallet, Loader2, XCircle, AlertCircle, Key } from 'lucide-react';
 
 export default function AdminDiagnosticsCard() {
   const { data: isAdmin, isLoading: adminCheckLoading } = useIsCallerAdmin();
   const adminWalletState = useAdminWalletStatus();
+  const { identity } = useInternetIdentity();
+  
+  const isLoggedIn = !!identity;
+  const hasTokenInUrl = hasAdminTokenInUrl();
+  const hasTokenInSession = hasAdminTokenInSession();
 
   return (
     <Card className="border-dashed border-2">
@@ -38,9 +45,9 @@ export default function AdminDiagnosticsCard() {
         </div>
 
         {/* Admin Wallet Balance Status */}
-        <div className="flex items-start justify-between text-sm">
-          <span className="text-muted-foreground">Admin Wallet Status:</span>
-          <div className="flex flex-col items-end gap-1">
+        <div className="flex items-start justify-between text-sm gap-2">
+          <span className="text-muted-foreground flex-shrink-0">Admin Wallet Status:</span>
+          <div className="flex flex-col items-end gap-1 min-w-0">
             {adminWalletState.status === 'loading' && (
               <Badge variant="secondary">
                 <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -59,12 +66,12 @@ export default function AdminDiagnosticsCard() {
               </Badge>
             )}
             {adminWalletState.status === 'error' && (
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-1 min-w-0 max-w-full">
                 <Badge variant="destructive">
                   <AlertCircle className="w-3 h-3 mr-1" />
                   Error
                 </Badge>
-                <span className="text-xs text-destructive max-w-[200px] text-right">
+                <span className="text-xs text-destructive text-right break-words overflow-hidden max-h-20 line-clamp-3">
                   {normalizeBackendError(adminWalletState.message)}
                 </span>
               </div>
@@ -83,11 +90,36 @@ export default function AdminDiagnosticsCard() {
           </div>
         </div>
 
+        {/* Admin Token Status */}
+        <div className="flex items-start justify-between text-sm gap-2">
+          <span className="text-muted-foreground flex-shrink-0">Admin Token:</span>
+          <div className="flex flex-col items-end gap-1">
+            {hasTokenInUrl ? (
+              <Badge variant="default">
+                <Key className="w-3 h-3 mr-1" />
+                In URL
+              </Badge>
+            ) : hasTokenInSession ? (
+              <Badge variant="default">
+                <Key className="w-3 h-3 mr-1" />
+                In Session
+              </Badge>
+            ) : (
+              <Badge variant="secondary">
+                Not Found
+              </Badge>
+            )}
+          </div>
+        </div>
+
         {/* Explanation */}
-        <div className="pt-2 border-t text-xs text-muted-foreground">
+        <div className="pt-2 border-t text-xs text-muted-foreground space-y-2">
           <p>
-            This card shows internal admin checks. If "Admin Wallet Status" shows "Success" with a balance,
-            you are recognized as an admin. If it shows "Unauthorized", you do not have admin permissions.
+            <strong>Success with balance:</strong> You are recognized as an admin and can access admin features.
+          </p>
+          <p>
+            <strong>Unauthorized:</strong> {isLoggedIn ? 'You are logged in but not an admin.' : 'You need to log in.'} 
+            {!hasTokenInUrl && !hasTokenInSession && isLoggedIn && ' The admin token parameter is missing from the URL.'}
           </p>
         </div>
       </CardContent>
