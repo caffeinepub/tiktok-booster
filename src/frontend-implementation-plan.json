@@ -1,51 +1,68 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix admin wallet UI to avoid misleading 0 PKR on query failure",
+  "title": "Unify Dashboard admin wallet/admin recognition into a single canonical state",
   "requirements": [
     {
-      "id": "REQ-69",
-      "summary": "Prevent BalanceIndicator from showing a numeric 0 PKR for admins when admin wallet loading fails; show an English unavailable/error state, and keep admin wallet hidden for non-admins.",
+      "id": "REQ-1",
+      "summary": "Derive and render the Dashboard admin wallet status from one canonical source so balance and admin-recognition messaging can never disagree.",
       "acceptanceCriteria": [
-        "If getAdminWalletBalance errors for an authenticated admin user, BalanceIndicator does not render a numeric 0 as the admin wallet balance; it renders an English error/unavailable state.",
-        "If the viewer is not an admin, BalanceIndicator does not show an error state related to admin wallet access and simply omits the admin wallet portion.",
-        "If getAdminWalletBalance succeeds, BalanceIndicator shows the correct persisted admin wallet balance (formatted) and not 0."
+        "When the admin wallet balance renders as a number, the UI does not render any 'not recognized as admin'/'unauthorized' messaging anywhere on the Dashboard for the same session.",
+        "When the caller is not an admin, the Dashboard shows only the 'not an admin' messaging and does not show an admin wallet balance.",
+        "When the admin wallet balance request fails for reasons other than authorization, the Dashboard shows an error state (not the 'not an admin' state).",
+        "All user-facing status strings remain in English."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Adjust useGetAdminWalletBalance to surface fetch failures to the UI in a controlled way (no implicit 0/placeholder fallback for admin wallet), while keeping the query disabled for non-admins. This aligns with the app’s role-based access control from the authorization component (Verify the component's usage instructions before implementing)."
+          "path": "frontend/src/hooks/useAdminWalletStatus.ts",
+          "operation": "create",
+          "description": "Create a small hook that converts useGetAdminWalletBalance() + authentication state into a single discriminated admin-wallet UI state (e.g., not-logged-in/loading/unauthorized/error/success) and exposes balance only for the success state."
         },
         {
-          "path": "frontend/src/components/BalanceIndicator.tsx",
+          "path": "frontend/src/pages/DashboardPage.tsx",
           "operation": "modify",
-          "description": "Update admin wallet rendering to use the admin-wallet query error state: for admins, render a clear English unavailable/error message instead of formatting 0; keep the admin wallet section omitted for non-admin users. Ensure no user-facing non-English strings are introduced."
+          "description": "Refactor the Dashboard admin wallet badge + top card to render strictly from the canonical admin wallet UI state (from useAdminWalletStatus) so only one coherent state is shown at a time; ensure error state takes precedence over any cached/stale balance, and ensure the unauthorized message renders only when the canonical state is unauthorized."
         },
         {
-          "path": "frontend/src/lib/backendError.ts",
+          "path": "frontend/src/components/AdminDiagnosticsCard.tsx",
           "operation": "modify",
-          "description": "Extend error normalization (if needed) with a clear English message for admin-wallet-unavailable cases (including authorization traps and connectivity/actor availability) so BalanceIndicator can display a consistent, user-friendly status without showing 0."
+          "description": "Update AdminDiagnosticsCard to use the same canonical admin wallet UI state for wallet status/balance rendering so it cannot contradict the Dashboard admin wallet display; do not gate its visibility based on a separate admin signal that can disagree with the wallet status."
         }
       ]
     },
     {
-      "id": "REQ-70",
-      "summary": "Update /admin wallet-balance card to show real admin wallet balance when available and a clear English unavailable/error state when not (never default to 0).",
+      "id": "REQ-2",
+      "summary": "Show/hide Dashboard admin-only actions using the same canonical admin signal as the displayed admin wallet balance.",
       "acceptanceCriteria": [
-        "When signed in as an admin, /admin displays the same correct admin wallet balance as returned by getAdminWalletBalance.",
-        "When the admin wallet balance cannot be loaded, /admin shows an English error/unavailable state and does not show 0 as a fallback value."
+        "If the admin wallet balance is successfully fetched (non-null), the “Distribute Funds to User” card is available on the Dashboard.",
+        "If the admin wallet balance is null due to authorization, the “Distribute Funds to User” card is not shown.",
+        "There is no state where admin-only actions are hidden while an admin wallet balance is displayed."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminPage.tsx",
+          "path": "frontend/src/pages/DashboardPage.tsx",
           "operation": "modify",
-          "description": "Update the admin wallet-balance card to: (1) show formatted balance only when the query has valid data, and (2) show a clear English unavailable/error message when the admin wallet cannot be loaded (including unauthorized), without rendering 0 as a fallback. Prefer using the shared normalizeBackendError helper for consistent messaging."
+          "description": "Remove dependence on useIsCallerAdmin() for Dashboard admin-only action gating; show the “Distribute Funds to User” card whenever the canonical admin wallet UI state is success (balance available), and hide it for unauthorized/loading/error/not-logged-in states so it can never disagree with the displayed admin wallet balance."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Differentiate authorization failures from non-auth failures in the admin wallet balance query so only true auth failures map to null and all other failures surface as errors.",
+      "acceptanceCriteria": [
+        "A non-auth backend failure (e.g., temporary actor/connection issue) results in an error state in the Dashboard admin wallet UI, not a 'Not recognized as admin' state.",
+        "A true backend authorization failure results in a 'not an admin/unauthorized' UI state and a null admin wallet balance in React Query data."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/backendError.ts",
+          "operation": "modify",
+          "description": "Add a shared helper (e.g., isAuthorizationError(error: unknown): boolean) to reliably classify true authorization failures based on backend trap/message patterns, distinct from network/actor/other runtime failures."
         },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure the /admin page’s useGetAdminWalletBalance consumption has the necessary query state (loading/error/data) to render the correct UI states without relying on BigInt(0) fallbacks. This should remain compatible with the authorization component’s admin gating behavior (Verify the component's usage instructions before implementing)."
+          "description": "Harden useGetAdminWalletBalance() to return null only when isAuthorizationError(...) is true; otherwise rethrow so React Query sets an error state. Also ensure Dashboard consumers can prefer the query error state over any cached data to avoid false 'success + unauthorized' mismatches."
         }
       ]
     }

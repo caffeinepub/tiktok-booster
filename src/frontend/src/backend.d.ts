@@ -36,15 +36,21 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    addOrder(url: string, price: bigint, package: string, packageId: bigint): Promise<bigint>;
+    addOrderWithWallet(url: string, price: bigint, package: string, packageId: bigint): Promise<bigint>;
+    adminDistributeFunds(toUser: Principal, amount: bigint): Promise<void>;
+    adminTopUp(amount: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    distributeFunds(toUser: Principal, amount: bigint): Promise<void>;
     getAdminWalletBalance(): Promise<bigint>;
+    getAdminWalletBalanceForAdminNavBar(): Promise<bigint>;
+    getAdminWalletBalanceLegacy(): Promise<bigint>;
     getAllOrders(): Promise<Array<Order>>;
+    getAllUsers(): Promise<Array<[Principal, bigint]>>;
     getBalance(): Promise<bigint>;
+    getBalanceForAdminSidebar(): Promise<bigint>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getOrderById(orderId: bigint): Promise<Order | null>;
+    getUserBalance(user: Principal): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     onboarding(): Promise<void>;

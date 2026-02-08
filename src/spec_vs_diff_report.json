@@ -1,60 +1,28 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T16:13:35.495Z",
-  "summary": "Frontend updates add explicit error/unavailable states for the admin wallet balance (AdminPage clearly does; BalanceIndicator likely does but its relevant section is truncated). Backend changes add a migration module and reset/initialize adminWallet to 10,000, but the diff does not show adminWallet being persisted in stable state across upgrades, and the provided migration appears to overwrite any previously persisted admin wallet value.",
-  "missing_requirements": [
-    {
-      "id": "REQ-67",
-      "requirement": "Persist the admin wallet balance in stable canister state so it starts at 10,000 PKR on first install and is preserved across upgrades/redeployments (including after admin-to-user distributions).",
-      "reason": "In backend/main.mo, adminWallet is shown as a regular mutable variable (`var adminWallet = 10_000 : Nat;`) with no evidence of `stable var` or explicit preupgrade/postupgrade persistence. Additionally, the added migration sets `adminWallet` to 10,000 unconditionally, which would reset any pre-upgrade balance instead of preserving it.",
-      "evidence": [
-        "backend/main.mo",
-        "backend/migration.mo"
-      ]
-    },
-    {
-      "id": "REQ-68",
-      "requirement": "Backend must reliably recognize intended admin principal(s) so admin-only methods work for the admin account used by the app (and remain restricted for non-admins).",
-      "reason": "The diff shows admin checks via `AccessControl.isAdmin(accessControlState, caller)` but does not show any initialization or configuration that ensures the intended admin principal(s) are actually recognized (e.g., seeding admin principals in stable state or on install/upgrade).",
-      "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
-      "id": "REQ-69",
-      "requirement": "BalanceIndicator should never show a misleading \"0 PKR\" for admin wallet when the admin wallet query fails; instead show a clear English unavailable/error state for admins, and hide admin wallet section for non-admins without surfacing errors.",
-      "reason": "BalanceIndicator imports `normalizeBackendError` and captures `adminWalletError`, but the part of the component that renders the admin wallet value/error state is truncated, so the diff summary does not provide complete evidence that it avoids rendering a numeric 0 for admin wallet on error/unavailable in all cases.",
-      "evidence": [
-        "frontend/src/components/BalanceIndicator.tsx"
-      ]
-    }
-  ],
+  "generatedAt": "2026-02-08T04:14:39.306Z",
+  "summary": "Implemented a canonical admin wallet status hook and updated query error handling to distinguish authorization failures (null/unauthorized) from other errors (React Query error), then refactored Dashboard-related UI pieces to render coherent admin wallet states. Added an Admin Diagnostics card that appears to be new debugging UI beyond the requested fix.",
+  "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Migration changes Order schema by adding an `owner : Principal` field and sets all existing orders' owner to `Principal.anonymous()`.",
-      "reason": "The BuildRequest only addresses admin wallet persistence/initialization and frontend error handling; it does not request changing the order schema or backfilling an owner field.",
+      "description": "Added an \"Admin Diagnostics\" debugging card showing internal admin checks (isCallerAdmin and admin wallet status) which is not part of the requested Dashboard mismatch fix and may be considered a new feature/UI.",
+      "reason": "BuildRequest scope explicitly says not to add new product features beyond fixing the admin recognition/status mismatch; a dedicated diagnostics/debugging card is additional UI functionality not requested in REQ-1/2/3.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo"
-      ]
-    },
-    {
-      "description": "Migration forcibly resets adminWallet to 10,000 during migration rather than preserving the prior value.",
-      "reason": "This behavior is not requested and conflicts with the requirement to preserve the pre-upgrade admin wallet balance.",
-      "evidence": [
-        "backend/migration.mo"
+        "frontend/src/components/AdminDiagnosticsCard.tsx",
+        "frontend/src/pages/DashboardPage.tsx (imports and uses AdminDiagnosticsCard per diff snippet)"
       ]
     }
   ],
-  "confidence": 0.68,
+  "confidence": 0.74,
   "changed_files": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/components/AdminDiagnosticsCard.tsx",
     "frontend/src/components/BalanceIndicator.tsx",
+    "frontend/src/hooks/useAdminWalletStatus.ts",
+    "frontend/src/hooks/useQueries.ts",
     "frontend/src/lib/backendError.ts",
-    "frontend/src/pages/AdminPage.tsx",
+    "frontend/src/pages/DashboardPage.tsx",
     "project_state.json"
   ]
 }

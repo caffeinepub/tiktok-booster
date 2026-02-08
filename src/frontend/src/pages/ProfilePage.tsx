@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Loader2, User, Edit, Save, LogOut, KeyRound, Upload } from 'lucide-react';
+import { Loader2, User, Edit, Save, LogOut, KeyRound, Upload, Copy, Check } from 'lucide-react';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [principalCopied, setPrincipalCopied] = useState(false);
 
   const isAuthenticated = !!identity;
   const showLoginPrompt = !isInitializing && !isAuthenticated;
@@ -123,6 +125,25 @@ export default function ProfilePage() {
     toast.info('Opening Internet Identity', {
       description: 'Manage your credentials in the new tab',
     });
+  };
+
+  const handleCopyPrincipalId = async () => {
+    if (!identity) return;
+    
+    const principalId = identity.getPrincipal().toString();
+    const success = await copyToClipboard(principalId);
+    
+    if (success) {
+      setPrincipalCopied(true);
+      toast.success('Principal ID copied!', {
+        description: 'You can now share this ID to receive PKR',
+      });
+      setTimeout(() => setPrincipalCopied(false), 2000);
+    } else {
+      toast.error('Failed to copy Principal ID', {
+        description: 'Please try again or copy manually',
+      });
+    }
   };
 
   if (showLoginPrompt) {
@@ -227,6 +248,40 @@ export default function ProfilePage() {
             </div>
 
             <Separator />
+
+            {/* Principal ID Section */}
+            {isAuthenticated && identity && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="principal-id">Your Principal ID</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="principal-id"
+                      value={identity.getPrincipal().toString()}
+                      readOnly
+                      className="bg-muted font-mono text-sm"
+                    />
+                    <Button
+                      onClick={handleCopyPrincipalId}
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                    >
+                      {principalCopied ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    This is your unique identifier for receiving PKR transfers. Share this ID with others to receive funds.
+                  </p>
+                </div>
+
+                <Separator />
+              </>
+            )}
 
             {/* Username */}
             <div className="space-y-2">

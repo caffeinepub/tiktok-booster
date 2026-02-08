@@ -2,10 +2,50 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-balanceindicator-admin-wallet-display-logic-so-it-never-misleadingly-shows-0-pkr-when-the-admin-wallet-query-fails-or-is-unavailable-instead-show-a-clear-english-ui-state-e-g-admin-wallet-unavailable-or-an-error-message-for-admins-and-continue-to-hide-the-admin-wallet-section-for-non-admin-users-without-surfacing-errors",
-      "featureTitle": "Update the BalanceIndicator admin wallet display logic so it never misleadingly shows “0 PKR” when the admin wallet query fails or is unavailable; instead, show a clear English UI state (e.g., “Admin Wallet: Unavailable” or an error message) for admins, and continue to hide the admin wallet section for non-admin users without surfacing errors.",
+      "featureId": "feature-fix-the-dashboard-ui-so-it-never-shows-an-admin-wallet-balance-while-simultaneously-showing-an-admin-recognition-error-e-g-not-recognized-as-admin-the-admin-wallet-status-loading-not-logged-in-not-an-admin-error-success-must-be-derived-consistently-from-the-same-data-source-and-rendered-in-only-one-coherent-state-at-a-time",
+      "featureTitle": "Fix the Dashboard UI so it never shows an admin wallet balance while simultaneously showing an admin-recognition error (e.g., “Not recognized as admin”). The admin wallet status (loading / not logged in / not an admin / error / success) must be derived consistently from the same data source and rendered in only one coherent state at a time.",
       "files": [
-        "frontend/src/components/BalanceIndicator.tsx",
+        "frontend/src/components/AdminDiagnosticsCard.tsx",
+        "frontend/src/hooks/useAdminWalletStatus.ts",
+        "frontend/src/pages/DashboardPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-admin-gating-logic-on-the-dashboard-so-admin-only-actions-e-g-distribute-funds-to-user-are-shown-based-on-a-single-canonical-admin-signal-that-cannot-disagree-with-the-displayed-admin-wallet-balance-e-g-treat-a-successful-admin-wallet-balance-fetch-as-sufficient-proof-of-admin-access-and-treat-a-null-unauthorized-response-as-non-admin",
+      "featureTitle": "Update admin gating logic on the Dashboard so admin-only actions (e.g., “Distribute Funds to User”) are shown based on a single canonical admin signal that cannot disagree with the displayed admin wallet balance (e.g., treat a successful admin wallet balance fetch as sufficient proof of admin access, and treat a null/unauthorized response as non-admin).",
+      "files": [
+        "frontend/src/pages/DashboardPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-harden-the-admin-wallet-balance-query-error-handling-so-unauthorized-non-admin-is-not-falsely-inferred-from-non-auth-errors-ensure-only-true-authorization-failures-result-in-a-null-admin-wallet-balance-other-failures-must-surface-as-an-error-state-to-the-ui",
+      "featureTitle": "Harden the admin wallet balance query error handling so unauthorized/non-admin is not falsely inferred from non-auth errors. Ensure only true authorization failures result in a null admin wallet balance; other failures must surface as an error state to the UI.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
         "frontend/src/lib/backendError.ts"
       ],
       "components": [
@@ -17,26 +57,7 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-69"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-the-admin-page-admin-wallet-balance-card-so-that-it-reflects-the-real-persisted-admin-wallet-balance-when-available-and-shows-a-clear-english-message-when-the-admin-wallet-balance-is-unavailable-instead-of-defaulting-to-0",
-      "featureTitle": "Update the Admin page (/admin) wallet-balance card so that it reflects the real persisted admin wallet balance when available and shows a clear English message when the admin wallet balance is unavailable (instead of defaulting to 0).",
-      "files": [
-        "frontend/src/pages/AdminPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-70"
+        "REQ-3"
       ],
       "confidence": "high"
     }

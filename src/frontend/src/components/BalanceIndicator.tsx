@@ -1,32 +1,53 @@
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { useGetBalance, useIsCallerAdmin, useGetAdminWalletBalance } from '@/hooks/useQueries';
+import { useGetBalance } from '@/hooks/useQueries';
+import { useAdminWalletStatus } from '@/hooks/useAdminWalletStatus';
 import { formatBalance } from '@/lib/format';
 import { normalizeBackendError } from '@/lib/backendError';
-import { Wallet, ShieldCheck, LogIn, MessageCircle, AlertCircle } from 'lucide-react';
+import { Wallet, ShieldCheck, LogIn, MessageCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 export default function BalanceIndicator() {
   const { identity, isInitializing } = useInternetIdentity();
-  const { data: balance, isLoading: balanceLoading } = useGetBalance();
-  const { data: isAdmin, isLoading: adminCheckLoading } = useIsCallerAdmin();
-  const { 
-    data: adminWalletBalance, 
-    isLoading: adminWalletLoading, 
-    error: adminWalletError 
-  } = useGetAdminWalletBalance();
+  const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useGetBalance();
+  const adminWalletState = useAdminWalletStatus();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isAuthenticated = !!identity;
-  const displayBalance = isAuthenticated ? (balance || BigInt(0)) : BigInt(0);
+  const displayBalance = isAuthenticated ? (balance !== undefined ? balance : BigInt(0)) : BigInt(0);
   const showLoading = isAuthenticated && (isInitializing || balanceLoading);
-  const showAdminWallet = isAuthenticated && isAdmin === true;
+  
+  // Show admin wallet section only when status is 'success'
+  const showAdminWallet = adminWalletState.status === 'success';
   
   // Show zero balance helper when authenticated and balance is 0 (and not loading)
   const showZeroBalanceHelper = isAuthenticated && !showLoading && displayBalance === BigInt(0);
   
   // Show sign-in prompt when not authenticated
   const showSignInPrompt = !isAuthenticated;
+
+  const handleRefresh = async () => {
+    if (!isAuthenticated || isRefreshing) return;
+
+    setIsRefreshing(true);
+    try {
+      // Refetch user balance
+      await refetchBalance();
+
+      toast.success('Balance refreshed');
+    } catch (error) {
+      const errorMessage = normalizeBackendError(error);
+      toast.error('Failed to refresh balance', {
+        description: errorMessage,
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
     <div className="fixed-safe-top-right z-50 flex flex-col gap-2 items-end">
@@ -36,7 +57,21 @@ export default function BalanceIndicator() {
       >
         <Wallet className="w-5 h-5 mr-2.5 text-primary flex-shrink-0" />
         <div className="flex flex-col items-start gap-1">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Balance</span>
+          <div className="flex items-center justify-between w-full gap-3">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Balance</span>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-primary/10"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                title="Refresh balance"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            )}
+          </div>
           <div className="flex items-baseline gap-1.5 whitespace-nowrap">
             <span className="text-lg font-bold text-foreground">
               {showLoading ? '...' : formatBalance(displayBalance)}
@@ -78,33 +113,12 @@ export default function BalanceIndicator() {
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Admin Wallet</span>
               </div>
-              {adminWalletLoading || adminCheckLoading ? (
-                <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                  <span className="text-lg font-bold text-primary">...</span>
-                  <span className="text-sm font-medium text-muted-foreground">PKR</span>
-                </div>
-              ) : adminWalletError ? (
-                <div className="flex items-start gap-1.5 mt-1 max-w-[200px]">
-                  <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-destructive leading-relaxed">
-                    {normalizeBackendError(adminWalletError)}
-                  </p>
-                </div>
-              ) : adminWalletBalance !== undefined ? (
-                <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                  <span className="text-lg font-bold text-primary">
-                    {formatBalance(adminWalletBalance)}
-                  </span>
-                  <span className="text-sm font-medium text-muted-foreground">PKR</span>
-                </div>
-              ) : (
-                <div className="flex items-start gap-1.5 mt-1 max-w-[200px]">
-                  <AlertCircle className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Unavailable
-                  </p>
-                </div>
-              )}
+              <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                <span className="text-lg font-bold text-primary">
+                  {formatBalance(adminWalletState.balance)}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground">PKR</span>
+              </div>
             </>
           )}
         </div>

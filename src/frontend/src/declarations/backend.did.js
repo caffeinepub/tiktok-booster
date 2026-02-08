@@ -39,15 +39,29 @@ export const UserProfile = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'addOrder' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text, IDL.Nat], [IDL.Nat], []),
+  'addOrderWithWallet' : IDL.Func(
+      [IDL.Text, IDL.Nat, IDL.Text, IDL.Nat],
+      [IDL.Nat],
+      [],
+    ),
+  'adminDistributeFunds' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
+  'adminTopUp' : IDL.Func([IDL.Nat], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'distributeFunds' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
   'getAdminWalletBalance' : IDL.Func([], [IDL.Nat], ['query']),
+  'getAdminWalletBalanceForAdminNavBar' : IDL.Func([], [IDL.Nat], ['query']),
+  'getAdminWalletBalanceLegacy' : IDL.Func([], [IDL.Nat], ['query']),
   'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+  'getAllUsers' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Nat))],
+      ['query'],
+    ),
   'getBalance' : IDL.Func([], [IDL.Nat], ['query']),
+  'getBalanceForAdminSidebar' : IDL.Func([], [IDL.Nat], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getOrderById' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
+  'getUserBalance' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -93,19 +107,29 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'addOrder' : IDL.Func(
+    'addOrderWithWallet' : IDL.Func(
         [IDL.Text, IDL.Nat, IDL.Text, IDL.Nat],
         [IDL.Nat],
         [],
       ),
+    'adminDistributeFunds' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
+    'adminTopUp' : IDL.Func([IDL.Nat], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'distributeFunds' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
     'getAdminWalletBalance' : IDL.Func([], [IDL.Nat], ['query']),
+    'getAdminWalletBalanceForAdminNavBar' : IDL.Func([], [IDL.Nat], ['query']),
+    'getAdminWalletBalanceLegacy' : IDL.Func([], [IDL.Nat], ['query']),
     'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+    'getAllUsers' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Nat))],
+        ['query'],
+      ),
     'getBalance' : IDL.Func([], [IDL.Nat], ['query']),
+    'getBalanceForAdminSidebar' : IDL.Func([], [IDL.Nat], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getOrderById' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
+    'getUserBalance' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],

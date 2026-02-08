@@ -15,11 +15,23 @@ export function useCreateOrder() {
       const packageIdNum = parseInt(packageId.replace(/\D/g, ''), 10) || 0;
       const packageIdBigInt = BigInt(packageIdNum);
       
-      const orderId = await actor.addOrder(url, priceInBigInt, packageName, packageIdBigInt);
+      // Use addOrderWithWallet which deducts from user balance and adds to admin wallet
+      const orderId = await actor.addOrderWithWallet(url, priceInBigInt, packageName, packageIdBigInt);
       return orderId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    onSuccess: async () => {
+      // Invalidate orders, user balance, and admin wallet balance
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['orders'] }),
+        queryClient.invalidateQueries({ queryKey: ['balance'] }),
+        queryClient.invalidateQueries({ queryKey: ['adminWalletBalance'] }),
+      ]);
+      
+      // Force immediate refetch to update UI
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['balance'] }),
+        queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] }),
+      ]);
     },
   });
 }

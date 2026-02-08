@@ -119,15 +119,21 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
-    addOrder(url: string, price: bigint, package: string, packageId: bigint): Promise<bigint>;
+    addOrderWithWallet(url: string, price: bigint, package: string, packageId: bigint): Promise<bigint>;
+    adminDistributeFunds(toUser: Principal, amount: bigint): Promise<void>;
+    adminTopUp(amount: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    distributeFunds(toUser: Principal, amount: bigint): Promise<void>;
     getAdminWalletBalance(): Promise<bigint>;
+    getAdminWalletBalanceForAdminNavBar(): Promise<bigint>;
+    getAdminWalletBalanceLegacy(): Promise<bigint>;
     getAllOrders(): Promise<Array<Order>>;
+    getAllUsers(): Promise<Array<[Principal, bigint]>>;
     getBalance(): Promise<bigint>;
+    getBalanceForAdminSidebar(): Promise<bigint>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getOrderById(orderId: bigint): Promise<Order | null>;
+    getUserBalance(user: Principal): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     onboarding(): Promise<void>;
@@ -151,17 +157,45 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addOrder(arg0: string, arg1: bigint, arg2: string, arg3: bigint): Promise<bigint> {
+    async addOrderWithWallet(arg0: string, arg1: bigint, arg2: string, arg3: bigint): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.addOrder(arg0, arg1, arg2, arg3);
+                const result = await this.actor.addOrderWithWallet(arg0, arg1, arg2, arg3);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addOrder(arg0, arg1, arg2, arg3);
+            const result = await this.actor.addOrderWithWallet(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async adminDistributeFunds(arg0: Principal, arg1: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminDistributeFunds(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminDistributeFunds(arg0, arg1);
+            return result;
+        }
+    }
+    async adminTopUp(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminTopUp(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminTopUp(arg0);
             return result;
         }
     }
@@ -179,20 +213,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async distributeFunds(arg0: Principal, arg1: bigint): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.distributeFunds(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.distributeFunds(arg0, arg1);
-            return result;
-        }
-    }
     async getAdminWalletBalance(): Promise<bigint> {
         if (this.processError) {
             try {
@@ -204,6 +224,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getAdminWalletBalance();
+            return result;
+        }
+    }
+    async getAdminWalletBalanceForAdminNavBar(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAdminWalletBalanceForAdminNavBar();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAdminWalletBalanceForAdminNavBar();
+            return result;
+        }
+    }
+    async getAdminWalletBalanceLegacy(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAdminWalletBalanceLegacy();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAdminWalletBalanceLegacy();
             return result;
         }
     }
@@ -221,6 +269,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n3(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getAllUsers(): Promise<Array<[Principal, bigint]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllUsers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllUsers();
+            return result;
+        }
+    }
     async getBalance(): Promise<bigint> {
         if (this.processError) {
             try {
@@ -232,6 +294,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getBalance();
+            return result;
+        }
+    }
+    async getBalanceForAdminSidebar(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getBalanceForAdminSidebar();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getBalanceForAdminSidebar();
             return result;
         }
     }
@@ -275,6 +351,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getOrderById(arg0);
             return from_candid_opt_n14(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserBalance(arg0: Principal): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserBalance(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserBalance(arg0);
+            return result;
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {

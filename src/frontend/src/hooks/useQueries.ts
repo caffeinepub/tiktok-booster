@@ -3,6 +3,7 @@ import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
 import type { UserProfile } from '../backend';
 import { Principal } from '@dfinity/principal';
+import { isAuthorizationError } from '@/lib/backendError';
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -49,16 +50,11 @@ export function useGetBalance() {
   return useQuery<bigint>({
     queryKey: ['balance'],
     queryFn: async () => {
-      if (!actor) return BigInt(0);
-      try {
-        return await actor.getBalance();
-      } catch (error) {
-        console.error('Failed to fetch balance:', error);
-        return BigInt(0);
-      }
+      if (!actor) throw new Error('Actor not available');
+      return await actor.getBalance();
     },
     enabled: !!actor && !isFetching && isAuthenticated && !isInitializing,
-    placeholderData: BigInt(0),
+    retry: false,
   });
 }
 
@@ -85,22 +81,39 @@ export function useIsCallerAdmin() {
   });
 }
 
+/**
+ * Permission-safe admin wallet balance hook.
+ * Returns bigint on success, null on authorization failure.
+ * Throws error for non-auth failures so React Query sets error state.
+ */
 export function useGetAdminWalletBalance() {
   const { actor, isFetching } = useActor();
   const { identity, isInitializing } = useInternetIdentity();
-  const { data: isAdmin } = useIsCallerAdmin();
 
   const isAuthenticated = !!identity;
 
-  return useQuery<bigint>({
+  return useQuery<bigint | null>({
     queryKey: ['adminWalletBalance'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return await actor.getAdminWalletBalance();
+      try {
+        // Use the canonical getAdminWalletBalance method
+        return await actor.getAdminWalletBalance();
+      } catch (error: any) {
+        // Check if it's an authorization error
+        if (isAuthorizationError(error)) {
+          // Return null for unauthorized access (non-admin users)
+          return null;
+        }
+        // Re-throw other errors so React Query sets error state
+        throw error;
+      }
     },
-    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing && isAdmin === true,
+    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing,
     retry: false,
     refetchOnWindowFocus: true,
+    // Ensure stale data doesn't override error states
+    staleTime: 0,
   });
 }
 
@@ -114,7 +127,7 @@ export function useDistributeFunds() {
       if (amount <= BigInt(0)) {
         throw new Error('Amount must be greater than zero');
       }
-      return await actor.distributeFunds(toUser, amount);
+      return await actor.adminDistributeFunds(toUser, amount);
     },
     onSuccess: async () => {
       // Invalidate and immediately refetch both queries to update UI
@@ -128,6 +141,26 @@ export function useDistributeFunds() {
         queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] }),
         queryClient.refetchQueries({ queryKey: ['balance'] }),
       ]);
+    },
+  });
+}
+
+export function useAdminTopUp() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (amount: bigint) => {
+      if (!actor) throw new Error('Actor not initialized');
+      if (amount <= BigInt(0)) {
+        throw new Error('Amount must be greater than zero');
+      }
+      return await actor.adminTopUp(amount);
+    },
+    onSuccess: async () => {
+      // Invalidate and immediately refetch admin wallet balance
+      await queryClient.invalidateQueries({ queryKey: ['adminWalletBalance'] });
+      await queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] });
     },
   });
 }
@@ -154,5 +187,23 @@ export function useOnboarding() {
         queryClient.refetchQueries({ queryKey: ['adminWalletBalance'] }),
       ]);
     },
+  });
+}
+
+export function useGetAllUsers() {
+  const { actor, isFetching } = useActor();
+  const { identity, isInitializing } = useInternetIdentity();
+  const { data: isAdmin } = useIsCallerAdmin();
+
+  const isAuthenticated = !!identity;
+
+  return useQuery<Array<[Principal, bigint]>>({
+    queryKey: ['allUsers'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return await actor.getAllUsers();
+    },
+    enabled: !!actor && !isFetching && isAuthenticated && !isInitializing && isAdmin === true,
+    retry: false,
   });
 }

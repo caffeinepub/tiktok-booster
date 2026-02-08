@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage';
 import CreditsPage from './pages/CreditsPage';
 import StatusPage from './pages/StatusPage';
 import AdminPage from './pages/AdminPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import SignUpPage from './pages/SignUpPage';
@@ -36,6 +37,12 @@ const adminRoute = createRoute({
   component: AdminPage,
 });
 
+const adminUsersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/users',
+  component: AdminUsersPage,
+});
+
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dashboard',
@@ -54,7 +61,16 @@ const signUpRoute = createRoute({
   component: SignUpPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, creditsRoute, statusRoute, adminRoute, dashboardRoute, profileRoute, signUpRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  creditsRoute,
+  statusRoute,
+  adminRoute,
+  adminUsersRoute,
+  dashboardRoute,
+  profileRoute,
+  signUpRoute,
+]);
 
 const router = createRouter({ routeTree });
 

@@ -6,17 +6,17 @@ import Time "mo:core/Time";
 import Iter "mo:core/Iter";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
 
-(with migration = Migration.run)
 actor {
-  var adminWallet = 10_000 : Nat;
   var nextOrderId = 1;
+  var adminWallet : Nat = 10_000;
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
   let userBalances = Map.empty<Principal, Nat>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
+  let orders = Map.empty<Nat, Order>();
 
   public type UserProfile = {
     profilePicture : ?Text;
@@ -25,8 +25,6 @@ actor {
     email : ?Text;
     phone : ?Text;
   };
-
-  let userProfiles = Map.empty<Principal, UserProfile>();
 
   public type OrderStatus = {
     #pending;
@@ -45,8 +43,6 @@ actor {
     status : OrderStatus;
     createdAt : Int;
   };
-
-  let orders = Map.empty<Nat, Order>();
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -79,7 +75,7 @@ actor {
       };
       case (null) {
         if (adminWallet < 10) {
-          Runtime.trap("Admin balance not enough! Internal admin wallet does not have enough funds to perform this transaction. Please contact a system Administrator!");
+          Runtime.trap("Not enough funds in admin wallet! Internal admin wallet does not have enough funds to perform this transaction. Please contact a system administrator!");
         };
         adminWallet -= 10;
         userBalances.add(caller, 10);
@@ -104,7 +100,14 @@ actor {
     adminWallet;
   };
 
-  public shared ({ caller }) func distributeFunds(toUser : Principal, amount : Nat) : async () {
+  public query ({ caller }) func getAdminWalletBalanceLegacy() : async Nat {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admin can access wallet balance");
+    };
+    adminWallet;
+  };
+
+  public shared ({ caller }) func adminDistributeFunds(toUser : Principal, amount : Nat) : async () {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admin can distribute funds");
     };
@@ -119,11 +122,33 @@ actor {
     userBalances.add(toUser, currentBalance + amount);
   };
 
-  // Add new order - requires user authentication
-  public shared ({ caller }) func addOrder(url : Text, price : Nat, package : Text, packageId : Nat) : async Nat {
+  public shared ({ caller }) func adminTopUp(amount : Nat) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admin can top up the wallet");
+    };
+    if (amount == 0) {
+      Runtime.trap("Cannot top up with zero amount. Please specify a positive amount.");
+    };
+    adminWallet += amount;
+  };
+
+  public shared ({ caller }) func addOrderWithWallet(url : Text, price : Nat, package : Text, packageId : Nat) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create orders");
     };
+
+    let currentBalance = switch (userBalances.get(caller)) {
+      case (?balance) { balance };
+      case (null) { 0 };
+    };
+
+    if (currentBalance < price) {
+      Runtime.trap("Insufficient balance to place order");
+    };
+
+    userBalances.add(caller, currentBalance - price);
+    adminWallet += price;
+
     let orderId = nextOrderId;
     let newOrder : Order = {
       orderId;
@@ -140,24 +165,22 @@ actor {
     orderId;
   };
 
-  // Get order by id - owner or admin only
   public query ({ caller }) func getOrderById(orderId : Nat) : async ?Order {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view orders");
     };
     let order = orders.get(orderId);
     switch (order) {
-      case (?o) {
-        if (o.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      case (?order) {
+        if (order.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
           Runtime.trap("Unauthorized: Can only view your own orders");
         };
-        order;
+        ?order;
       };
       case (null) { null };
     };
   };
 
-  // Update order status - admin only
   public shared ({ caller }) func updateOrderStatus(orderId : Nat, status : OrderStatus) : async () {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admins can update order status");
@@ -170,11 +193,41 @@ actor {
     orders.add(orderId, updatedOrder);
   };
 
-  // Get all orders. Admin only.
+  public query ({ caller }) func getAllUsers() : async [(Principal, Nat)] {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can view all users");
+    };
+    userBalances.toArray();
+  };
+
   public query ({ caller }) func getAllOrders() : async [Order] {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admins can access all orders");
     };
     orders.values().toArray();
+  };
+
+  public query ({ caller }) func getUserBalance(user : Principal) : async Nat {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admin can access wallet balance");
+    };
+    switch (userBalances.get(user)) {
+      case (?balance) { balance };
+      case (null) { 0 };
+    };
+  };
+
+  public query ({ caller }) func getAdminWalletBalanceForAdminNavBar() : async Nat {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admin can access wallet balance");
+    };
+    adminWallet;
+  };
+
+  public query ({ caller }) func getBalanceForAdminSidebar() : async Nat {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admin can access wallet balance");
+    };
+    adminWallet;
   };
 };

@@ -1,102 +1,75 @@
 {
   "kind": "build_request",
-  "title": "Fix admin wallet balance showing as 0 PKR (persist admin wallet + improve error handling)",
-  "priority": "high",
+  "title": "Fix inconsistent admin wallet recognition message in Dashboard",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-67",
-      "text": "Persist the admin wallet balance in stable canister state so that it starts at 10,000 PKR on first install and does not reset to 0 (or reinitialize) after canister upgrades/redeployments.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Admin balance ma 0 pkr h"
-        ]
-      },
-      "acceptanceCriteria": [
-        "After a fresh deploy, getAdminWalletBalance (as an admin) returns 10_000.",
-        "After an upgrade/redeploy that preserves state, getAdminWalletBalance returns the pre-upgrade value (not reset to 10_000 and not 0).",
-        "Admin-to-user distributions reduce the persisted admin wallet balance and the reduced value remains correct after a page refresh and after an upgrade."
-      ]
-    },
-    {
-      "id": "REQ-68",
-      "text": "Ensure the admin wallet does not become inaccessible due to missing admin initialization: the backend must reliably recognize the intended admin principal(s) so that admin-only methods (e.g., getAdminWalletBalance, getAllOrders, updateOrderStatus, distributeFunds) work for the admin account used by the app.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Admin balance ma 0 pkr h"
-        ]
-      },
-      "acceptanceCriteria": [
-        "When signed in as an admin, the frontend can successfully call getAdminWalletBalance without an unauthorized trap.",
-        "When signed in as a non-admin, getAdminWalletBalance remains admin-only and is rejected by the backend."
-      ]
-    },
-    {
-      "id": "REQ-69",
-      "text": "Update the BalanceIndicator admin wallet display logic so it never misleadingly shows “0 PKR” when the admin wallet query fails or is unavailable; instead, show a clear English UI state (e.g., “Admin Wallet: Unavailable” or an error message) for admins, and continue to hide the admin wallet section for non-admin users without surfacing errors.",
+      "id": "REQ-1",
+      "text": "Fix the Dashboard UI so it never shows an admin wallet balance while simultaneously showing an admin-recognition error (e.g., “Not recognized as admin”). The admin wallet status (loading / not logged in / not an admin / error / success) must be derived consistently from the same data source and rendered in only one coherent state at a time.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-3"
         ],
         "quotes": [
-          "Admin balance ma 0 pkr h"
+          "Udhar admin wallet show ho gaya g lakin ya likha aya raha h k admin wallet not recognize why?"
         ]
       },
       "acceptanceCriteria": [
-        "If getAdminWalletBalance errors for an authenticated admin user, BalanceIndicator does not render a numeric 0 as the admin wallet balance; it renders an English error/unavailable state.",
-        "If the viewer is not an admin, BalanceIndicator does not show an error state related to admin wallet access and simply omits the admin wallet portion.",
-        "If getAdminWalletBalance succeeds, BalanceIndicator shows the correct persisted admin wallet balance (formatted) and not 0."
+        "When the admin wallet balance renders as a number, the UI does not render any 'not recognized as admin'/'unauthorized' messaging anywhere on the Dashboard for the same session.",
+        "When the caller is not an admin, the Dashboard shows only the 'not an admin' messaging and does not show an admin wallet balance.",
+        "When the admin wallet balance request fails for reasons other than authorization, the Dashboard shows an error state (not the 'not an admin' state).",
+        "All user-facing status strings remain in English."
       ]
     },
     {
-      "id": "REQ-70",
-      "text": "Update the Admin page (/admin) wallet-balance card so that it reflects the real persisted admin wallet balance when available and shows a clear English message when the admin wallet balance is unavailable (instead of defaulting to 0).",
+      "id": "REQ-2",
+      "text": "Update admin gating logic on the Dashboard so admin-only actions (e.g., “Distribute Funds to User”) are shown based on a single canonical admin signal that cannot disagree with the displayed admin wallet balance (e.g., treat a successful admin wallet balance fetch as sufficient proof of admin access, and treat a null/unauthorized response as non-admin).",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-3"
         ],
         "quotes": [
-          "Admin balance ma 0 pkr h"
+          "admin wallet not recognize"
         ]
       },
       "acceptanceCriteria": [
-        "When signed in as an admin, /admin displays the same correct admin wallet balance as returned by getAdminWalletBalance.",
-        "When the admin wallet balance cannot be loaded, /admin shows an English error/unavailable state and does not show 0 as a fallback value."
+        "If the admin wallet balance is successfully fetched (non-null), the “Distribute Funds to User” card is available on the Dashboard.",
+        "If the admin wallet balance is null due to authorization, the “Distribute Funds to User” card is not shown.",
+        "There is no state where admin-only actions are hidden while an admin wallet balance is displayed."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Harden the admin wallet balance query error handling so unauthorized/non-admin is not falsely inferred from non-auth errors. Ensure only true authorization failures result in a null admin wallet balance; other failures must surface as an error state to the UI.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-3"
+        ],
+        "quotes": [
+          "admin wallet not recognize"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A non-auth backend failure (e.g., temporary actor/connection issue) results in an error state in the Dashboard admin wallet UI, not a 'Not recognized as admin' state.",
+        "A true backend authorization failure results in a 'not an admin/unauthorized' UI state and a null admin wallet balance in React Query data."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
-    "Generate backend/migration.mo only if needed to preserve existing deployed state (conditional migration policy).",
-    "Do not edit files under frontend/src/components/ui or other immutable frontend paths listed in SYSTEM_CONTEXT.",
-    "All user-facing text must be in English."
+    "Do not edit files under frontend/src/components/ui (Shadcn components are read-only).",
+    "Do not edit frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, or frontend/src/main.tsx (immutable paths).",
+    "Backend must remain a single Motoko actor in backend/main.mo; only add migration.mo if a state upgrade is required."
   ],
   "nonGoals": [
-    "Adding new payment methods or external database integrations.",
-    "Changing the currency away from PKR or changing package pricing/tiers.",
-    "Implementing real TikTok API functionality."
+    "Do not add new authentication providers (only Internet Identity is supported).",
+    "Do not add real-time features (WebSockets/push/chat).",
+    "Do not redesign unrelated pages or add new product features beyond fixing the admin recognition/status mismatch."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
-import { useGetAdminWalletBalance, useDistributeFunds } from '@/hooks/useQueries';
+import { useDistributeFunds } from '@/hooks/useQueries';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
+import { useAdminWalletStatus } from '@/hooks/useAdminWalletStatus';
 import { validateUrl } from '@/lib/validation';
 import { formatPKR, formatBalance } from '@/lib/format';
 import { copyToClipboard } from '@/lib/copyToClipboard';
@@ -12,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2, User, FileText, FolderOpen, Copy, Check, Wallet, AlertCircle } from 'lucide-react';
+import { Loader2, User, FileText, FolderOpen, Copy, Check, Wallet, AlertCircle, XCircle, LogIn } from 'lucide-react';
 import { Principal } from '@dfinity/principal';
+import AdminDiagnosticsCard from '@/components/AdminDiagnosticsCard';
 
 interface LocalOrder {
   id: string;
@@ -35,7 +38,8 @@ const DASHBOARD_PACKAGES = [
 const INVITE_URL = 'https://tik-tok-booster-1--tayyabrandhawa1.replit.app';
 
 export default function DashboardPage() {
-  const { data: adminBalance, isLoading: adminBalanceLoading, error: adminBalanceError } = useGetAdminWalletBalance();
+  const { identity } = useInternetIdentity();
+  const adminWalletState = useAdminWalletStatus();
   const distributeFundsMutation = useDistributeFunds();
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +49,159 @@ export default function DashboardPage() {
   const [userPrincipal, setUserPrincipal] = useState('');
   const [selectedPackage, setSelectedPackage] = useState<string>('Starter');
   const [copied, setCopied] = useState(false);
+
+  const isAuthenticated = !!identity;
+
+  // Determine what to show in the admin wallet badge
+  const renderAdminWalletBadge = () => {
+    switch (adminWalletState.status) {
+      case 'not-logged-in':
+        return (
+          <Badge variant="secondary" className="px-4 py-2 text-base font-semibold">
+            <LogIn className="w-4 h-4 mr-2" />
+            <div className="flex flex-col items-start">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Admin Wallet</span>
+              <span className="text-xs text-muted-foreground">Not logged in</span>
+            </div>
+          </Badge>
+        );
+
+      case 'loading':
+        return (
+          <Badge variant="secondary" className="px-4 py-2 text-base font-semibold">
+            <Wallet className="w-4 h-4 mr-2" />
+            <div className="flex flex-col items-start">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Admin Wallet</span>
+              <span className="text-sm">Loading...</span>
+            </div>
+          </Badge>
+        );
+
+      case 'unauthorized':
+        return (
+          <Badge variant="secondary" className="px-4 py-2 text-base font-semibold">
+            <XCircle className="w-4 h-4 mr-2" />
+            <div className="flex flex-col items-start">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Admin Wallet</span>
+              <span className="text-xs text-muted-foreground">Not recognized as admin</span>
+            </div>
+          </Badge>
+        );
+
+      case 'error':
+        return (
+          <Badge variant="destructive" className="px-4 py-2 text-base font-semibold">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            <div className="flex flex-col items-start">
+              <span className="text-xs uppercase tracking-wide">Admin Wallet</span>
+              <span className="text-xs">Error: {normalizeBackendError(adminWalletState.message)}</span>
+            </div>
+          </Badge>
+        );
+
+      case 'success':
+        return (
+          <Badge variant="secondary" className="px-4 py-2 text-base font-semibold">
+            <Wallet className="w-4 h-4 mr-2" />
+            <div className="flex flex-col items-start">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Admin Wallet</span>
+              <span className="text-lg font-bold text-primary">
+                {formatBalance(adminWalletState.balance)} <span className="text-sm text-muted-foreground">PKR</span>
+              </span>
+            </div>
+          </Badge>
+        );
+    }
+  };
+
+  // Render prominent admin wallet card at top of content
+  const renderAdminWalletCard = () => {
+    switch (adminWalletState.status) {
+      case 'not-logged-in':
+        return (
+          <Alert className="border-2 border-muted">
+            <LogIn className="h-5 w-5" />
+            <AlertDescription className="ml-2">
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-base">Admin Wallet</span>
+                <span className="text-sm text-muted-foreground">
+                  You are not logged in. Please log in to view the admin wallet balance.
+                </span>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+
+      case 'loading':
+        return (
+          <Card className="border-2 border-primary/30 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold mb-1">Admin Wallet</h3>
+                  <p className="text-sm text-muted-foreground">Loading balance...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'unauthorized':
+        return (
+          <Alert className="border-2 border-muted">
+            <XCircle className="h-5 w-5" />
+            <AlertDescription className="ml-2">
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-base">Admin Wallet</span>
+                <span className="text-sm text-muted-foreground">
+                  You are not recognized as an admin. Only administrators can view the admin wallet balance.
+                </span>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+
+      case 'error':
+        return (
+          <Alert variant="destructive" className="border-2">
+            <AlertCircle className="h-5 w-5" />
+            <AlertDescription className="ml-2">
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-base">Admin Wallet Error</span>
+                <span className="text-sm">
+                  Failed to load admin wallet balance: {normalizeBackendError(adminWalletState.message)}
+                </span>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+
+      case 'success':
+        return (
+          <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-primary/20">
+                  <Wallet className="h-8 w-8 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold mb-1 text-foreground">Admin Wallet Balance</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-primary">
+                      {formatBalance(adminWalletState.balance)}
+                    </span>
+                    <span className="text-xl font-semibold text-muted-foreground">PKR</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+    }
+  };
 
   const handleCopyInviteLink = async () => {
     const success = await copyToClipboard(INVITE_URL);
@@ -70,66 +227,50 @@ export default function DashboardPage() {
     profileRef.current?.focus();
   };
 
-  const handlePlaceOrder = () => {
+  const handleQuickOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     const validation = validateUrl(tiktokUrl);
     if (!validation.valid) {
-      toast.error(validation.error || 'Please enter a valid URL');
+      toast.error('Invalid URL', {
+        description: validation.error,
+      });
       return;
     }
 
     const pkg = DASHBOARD_PACKAGES.find(p => p.id === selectedPackage);
     if (!pkg) return;
 
-    const currentBalance = Number(adminBalance || BigInt(0));
-    if (currentBalance < pkg.price) {
-      toast.error('Insufficient balance!', {
-        description: 'Admin wallet does not have enough funds',
+    const newOrder: LocalOrder = {
+      id: `#${(localOrders.length + 1).toString().padStart(6, '0')}`,
+      url: tiktokUrl,
+      pkg: pkg.name,
+      status: 'Pending',
+      time: new Date().toLocaleString(),
+    };
+
+    setLocalOrders([newOrder, ...localOrders]);
+    setTiktokUrl('');
+    
+    toast.success('Order placed successfully!', {
+      description: `${pkg.name} package for ${formatPKR(pkg.price)}`,
+    });
+  };
+
+  const handleDistributeFunds = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const amount = parseFloat(allocatedBalance);
+    if (!allocatedBalance || isNaN(amount) || amount <= 0) {
+      toast.error('Invalid amount', {
+        description: 'Please enter a valid amount greater than zero',
       });
       return;
     }
 
-    const orderId = 'CFF' + Date.now();
-    const newOrder: LocalOrder = {
-      id: orderId,
-      url: tiktokUrl,
-      pkg: pkg.name,
-      status: 'Processing...',
-      time: new Date().toLocaleTimeString(),
-    };
-
-    setLocalOrders(prev => [newOrder, ...prev]);
-    setTiktokUrl('');
-
-    toast.success(`Order #${orderId} placed!`, {
-      description: `Package: ${pkg.name} (${formatPKR(pkg.price)}) - Delivery: 5–10 min ⚡`,
-    });
-
-    setTimeout(() => {
-      setLocalOrders(prev =>
-        prev.map(order =>
-          order.id === orderId ? { ...order, status: '✅ Completed!' } : order
-        )
-      );
-    }, 5000 + Math.random() * 5000);
-  };
-
-  const handleDistributeFunds = async () => {
     if (!userPrincipal.trim()) {
-      toast.error('Please enter a user Principal ID');
-      return;
-    }
-
-    const allocatedAmount = parseInt(allocatedBalance) || 0;
-    if (allocatedAmount <= 0) {
-      toast.error('Please enter a valid amount greater than zero');
-      return;
-    }
-
-    // Optional client-side check for better UX
-    const currentBalance = Number(adminBalance || BigInt(0));
-    if (allocatedAmount > currentBalance) {
-      toast.error('Insufficient admin wallet balance!', {
-        description: `Admin wallet only has ${formatBalance(adminBalance || BigInt(0))} PKR available`,
+      toast.error('Invalid Principal ID', {
+        description: 'Please enter a valid Principal ID',
       });
       return;
     }
@@ -139,320 +280,256 @@ export default function DashboardPage() {
       
       await distributeFundsMutation.mutateAsync({
         toUser: principal,
-        amount: BigInt(allocatedAmount),
+        amount: BigInt(Math.floor(amount)),
       });
 
       toast.success('Funds distributed successfully!', {
-        description: `${allocatedAmount} PKR allocated to user`,
+        description: `${Math.floor(amount)} PKR sent to user`,
       });
       
-      // Clear fields only after successful distribution
-      setUserPrincipal('');
       setAllocatedBalance('');
+      setUserPrincipal('');
     } catch (error) {
-      // Use normalized error message
       const errorMessage = normalizeBackendError(error);
       toast.error('Failed to distribute funds', {
         description: errorMessage,
       });
-      // Do not clear fields or change any displayed balances on error
     }
   };
 
+  // Show admin-only sections only when admin wallet balance is successfully loaded
+  const showAdminActions = adminWalletState.status === 'success';
+
   return (
-    <div className="min-h-screen">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-br from-primary via-primary/90 to-destructive shadow-2xl border-b border-white/10">
-        <div className="container mx-auto px-4 py-6 max-w-7xl relative">
-          {/* Profile Button - Top Right Corner */}
-          <Button
-            onClick={scrollToProfile}
-            variant="outline"
-            size="sm"
-            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm"
-          >
-            <User className="w-4 h-4 mr-2" />
-            Profile
-          </Button>
-
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pr-24 lg:pr-28">
-            {/* Left: Title and URL */}
-            <div className="flex-1">
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                Caffeine TikTok Booster
-              </h1>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <p className="text-sm text-white/90">
-                  Your Site: <span className="font-semibold">{INVITE_URL}</span>
-                </p>
-                <Button
-                  onClick={handleCopyInviteLink}
-                  variant="secondary"
-                  size="sm"
-                  className="w-fit"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-3 h-3 mr-1" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 mr-1" />
-                      Copy Invite Link
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Right: Admin Balance */}
-            <div className="text-center sm:text-right">
-              <div className="flex items-center justify-center sm:justify-end gap-2 mb-1">
-                <Wallet className="w-4 h-4 text-white/80" />
-                <p className="text-sm text-white/80">Admin Balance</p>
-              </div>
-              {adminBalanceLoading ? (
-                <div className="flex justify-center sm:justify-end">
-                  <Loader2 className="w-8 h-8 text-white/60 animate-spin" />
-                </div>
-              ) : adminBalanceError ? (
-                <p className="text-sm text-red-300">Unauthorized</p>
-              ) : (
-                <p className="text-3xl lg:text-4xl font-bold text-yellow-300">
-                  {formatBalance(adminBalance || BigInt(0))} PKR
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Quick Order */}
-          <Card className="bg-card/95 backdrop-blur shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                🔥 Quick Order (Low Price!)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* Header with Admin Wallet Badge */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+            <p className="text-muted-foreground">Manage your orders and account</p>
+          </div>
+          {renderAdminWalletBadge()}
+        </div>
+
+        {/* Admin Wallet Card - Prominent at top */}
+        <div className="mb-8">
+          {renderAdminWalletCard()}
+        </div>
+
+        {/* Admin Diagnostics Card */}
+        {isAuthenticated && (
+          <div className="mb-8">
+            <AdminDiagnosticsCard />
+          </div>
+        )}
+
+        {/* Invite URL Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Copy className="w-5 h-5" />
+              Invite Link
+            </CardTitle>
+            <CardDescription>Share this link to invite others to the platform</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input 
+                value={INVITE_URL} 
+                readOnly 
+                className="font-mono text-sm"
+              />
+              <Button 
+                onClick={handleCopyInviteLink}
+                variant={copied ? "secondary" : "default"}
+                className="min-w-[100px]"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Order Form */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Quick Order
+            </CardTitle>
+            <CardDescription>Place a new order quickly</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleQuickOrder} className="space-y-4">
               <div>
                 <Label htmlFor="tiktok-url">TikTok Video URL</Label>
                 <Input
                   id="tiktok-url"
-                  placeholder="TikTok Video URL"
+                  type="url"
+                  placeholder="https://www.tiktok.com/@username/video/..."
                   value={tiktokUrl}
                   onChange={(e) => setTiktokUrl(e.target.value)}
-                  className="mt-1"
+                  required
                 />
               </div>
-
               <div>
-                <Label>Select Package</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
+                <Label htmlFor="package-select">Select Package</Label>
+                <select
+                  id="package-select"
+                  value={selectedPackage}
+                  onChange={(e) => setSelectedPackage(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
                   {DASHBOARD_PACKAGES.map((pkg) => (
-                    <Button
-                      key={pkg.id}
-                      variant={selectedPackage === pkg.id ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedPackage(pkg.id)}
-                      className="justify-between"
-                    >
-                      <span>{pkg.name}</span>
-                      <Badge variant="secondary" className="ml-2">
-                        {pkg.price} PKR
-                      </Badge>
-                    </Button>
+                    <option key={pkg.id} value={pkg.id}>
+                      {pkg.name} - {formatPKR(pkg.price)}
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
-
-              <Button
-                onClick={handlePlaceOrder}
-                className="w-full"
-                size="lg"
-              >
+              <Button type="submit" className="w-full">
                 Place Order
               </Button>
-            </CardContent>
-          </Card>
+            </form>
+          </CardContent>
+        </Card>
 
-          {/* Distribute Funds to User */}
-          <Card className="bg-card/95 backdrop-blur shadow-xl">
+        {/* Admin-only: Distribute Funds Section */}
+        {showAdminActions && (
+          <Card className="mb-8 border-primary/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wallet className="w-5 h-5" />
                 Distribute Funds to User
               </CardTitle>
-              <CardDescription>
-                Transfer balance from admin wallet to a user
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {adminBalanceError && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Only admin can distribute funds
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div>
-                <Label htmlFor="user-principal">User Principal ID</Label>
-                <Input
-                  id="user-principal"
-                  placeholder="Enter user Principal ID"
-                  value={userPrincipal}
-                  onChange={(e) => setUserPrincipal(e.target.value)}
-                  className="mt-1 font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  The user must be logged in to receive funds. You can find their Principal ID in their profile.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="distribute-amount">Amount (PKR)</Label>
-                <Input
-                  id="distribute-amount"
-                  type="number"
-                  placeholder="Enter amount"
-                  value={allocatedBalance}
-                  onChange={(e) => setAllocatedBalance(e.target.value)}
-                  className="mt-1"
-                />
-                {adminBalance && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Available: {formatBalance(adminBalance)} PKR
-                  </p>
-                )}
-              </div>
-
-              <Button
-                onClick={handleDistributeFunds}
-                className="w-full"
-                size="lg"
-                disabled={distributeFundsMutation.isPending || !!adminBalanceError}
-              >
-                {distributeFundsMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Distributing...
-                  </>
-                ) : (
-                  'Distribute Funds'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Recent Orders */}
-          <Card className="bg-card/95 backdrop-blur shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Recent Orders
-              </CardTitle>
+              <CardDescription>Transfer funds from admin wallet to a user's balance</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[300px] pr-4">
-                {localOrders.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No orders yet. Place your first order!
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {localOrders.map((order) => (
-                      <div
-                        key={order.id}
-                        className="p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-mono text-sm font-semibold">
-                            #{order.id}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {order.pkg}
-                          </Badge>
+              <form onSubmit={handleDistributeFunds} className="space-y-4">
+                <div>
+                  <Label htmlFor="user-principal">User Principal ID</Label>
+                  <Input
+                    id="user-principal"
+                    type="text"
+                    placeholder="xxxxx-xxxxx-xxxxx-xxxxx-xxx"
+                    value={userPrincipal}
+                    onChange={(e) => setUserPrincipal(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="allocated-balance">Amount (PKR)</Label>
+                  <Input
+                    id="allocated-balance"
+                    type="number"
+                    placeholder="100"
+                    value={allocatedBalance}
+                    onChange={(e) => setAllocatedBalance(e.target.value)}
+                    min="1"
+                    step="1"
+                    required
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={distributeFundsMutation.isPending}
+                >
+                  {distributeFundsMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Distributing...
+                    </>
+                  ) : (
+                    'Distribute Funds'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Orders */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FolderOpen className="w-5 h-5" />
+              Recent Orders
+            </CardTitle>
+            <CardDescription>Your latest order activity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {localOrders.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No orders yet. Place your first order above!
+              </p>
+            ) : (
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-4">
+                  {localOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold">{order.id}</span>
+                          <Badge variant="secondary">{order.status}</Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mb-1">
+                        <p className="text-sm text-muted-foreground truncate max-w-md">
                           {order.url}
                         </p>
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-muted-foreground">{order.time}</span>
-                          <span className={order.status.includes('✅') ? 'text-green-600 font-medium' : 'text-yellow-600'}>
-                            {order.status}
-                          </span>
-                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{order.time}</p>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="text-right">
+                        <p className="font-semibold">{order.pkg}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </ScrollArea>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* System Info */}
-          <Card className="bg-card/95 backdrop-blur shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                System Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg border bg-muted/30">
-                  <p className="text-sm font-medium mb-1">Wallet System</p>
-                  <p className="text-xs text-muted-foreground">
-                    User balances are shown in the top-right corner. Balances are added by the admin via "Distribute Funds to User".
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg border bg-muted/30">
-                  <p className="text-sm font-medium mb-1">Order Processing</p>
-                  <p className="text-xs text-muted-foreground">
-                    All orders are processed within 5–10 minutes. Track status in Recent Orders.
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg border bg-muted/30">
-                  <p className="text-sm font-medium mb-1">Support</p>
-                  <p className="text-xs text-muted-foreground">
-                    For assistance, contact via Telegram or check the Credits page.
-                  </p>
-                </div>
+        {/* System Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              System Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge variant="secondary">Active</Badge>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Profile Section */}
-        <div ref={profileRef} tabIndex={-1} className="mt-8">
-          <Card className="bg-card/95 backdrop-blur shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="w-5 h-5" />
-                Profile & Settings
-              </CardTitle>
-              <CardDescription>
-                Manage your profile and account settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">
-                  Visit your profile page to update your information
-                </p>
-                <Button asChild>
-                  <a href="/profile">Go to Profile</a>
-                </Button>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Orders:</span>
+                <span className="font-semibold">{localOrders.length}</span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Account Type:</span>
+                <span className="font-semibold">
+                  {showAdminActions ? 'Administrator' : 'User'}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
