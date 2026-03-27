@@ -7,19 +7,22 @@ import Text "mo:core/Text";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import Time "mo:core/Time";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   var nextOrderId = 1;
   var adminWallet : Nat = 10_000;
-  var isInitialized = false;
 
   let userBalances = Map.empty<Principal, Nat>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let orders = Map.empty<Nat, Order>();
 
-  var accessControlState = AccessControl.initState();
+  let accessControlState = AccessControl.initState();
+
+  // Community
+  let posts = Map.empty<Nat, Post>();
+  var nextPostId = 1;
 
   include MixinAuthorization(accessControlState);
 
@@ -49,18 +52,63 @@ actor {
     createdAt : Int;
   };
 
-  // Ensure initialization happens on first call by any principal
-  // The MixinAuthorization should provide initializeAccessControl which calls AccessControl.initialize
-  // This is a safety check to ensure the system is initialized
-  private func ensureInitialized(caller : Principal) {
-    if (not isInitialized) {
-      Runtime.trap("Authorization system not ready, reload and try again");
+  public type Post = {
+    postId : Nat;
+    author : Principal;
+    content : Text;
+    timestamp : Int;
+  };
+
+  // New type to return account summary for frontend
+  public type AccountSummary = {
+    caller : Principal;
+    role : Text; // "admin" or "user"
+    userBalance : Nat;
+    adminWalletBalance : Nat;
+  };
+
+  // Helper: auto-register user in access control if not already registered
+  func ensureRegistered(caller : Principal) {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to perform this action");
+    };
+    switch (accessControlState.userRoles.get(caller)) {
+      case (null) {
+        // Not registered yet — register as user automatically
+        accessControlState.userRoles.add(caller, #user);
+      };
+      case (?_) {}; // Already registered
+    };
+  };
+
+  public query ({ caller }) func getAccountSummary() : async AccountSummary {
+    let callerRole = switch (accessControlState.userRoles.get(caller)) {
+      case (?role) { role };
+      case (null) { #user }; // default for unregistered
+    };
+    let roleString = switch (callerRole) {
+      case (#admin) { "admin" };
+      case (_) { "user" };
+    };
+
+    let userBalance = switch (userBalances.get(caller)) {
+      case (?balance) { balance };
+      case (null) { 0 };
+    };
+
+    let adminBalance = if (callerRole == #admin) { adminWallet } else { 0 };
+
+    {
+      caller;
+      role = roleString;
+      userBalance;
+      adminWalletBalance = adminBalance;
     };
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to access profiles");
     };
     userProfiles.get(caller);
   };
@@ -73,35 +121,33 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    ensureInitialized(caller);
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to save profiles");
     };
     userProfiles.add(caller, profile);
   };
 
   public shared ({ caller }) func onboarding() : async () {
-    ensureInitialized(caller);
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can receive funds");
-    };
+    // Auto-register user in access control if not yet registered
+    ensureRegistered(caller);
+
     switch (userBalances.get(caller)) {
       case (?_existingBalance) {
         Runtime.trap("User already exists in the database");
       };
       case (null) {
-        if (adminWallet < 10) {
+        if (adminWallet < 10_000) {
           Runtime.trap("Not enough funds in admin wallet! Internal admin wallet does not have enough funds to perform this transaction. Please contact a system administrator!");
         };
-        adminWallet -= 10;
-        userBalances.add(caller, 10);
+        adminWallet -= 10_000;
+        userBalances.add(caller, 10_000);
       };
     };
   };
 
   public query ({ caller }) func getBalance() : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can check balance");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to check balance");
     };
     switch (userBalances.get(caller)) {
       case (?balance) { balance };
@@ -116,15 +162,7 @@ actor {
     adminWallet;
   };
 
-  public query ({ caller }) func getAdminWalletBalanceLegacy() : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admin can access wallet balance");
-    };
-    adminWallet;
-  };
-
   public shared ({ caller }) func adminDistributeFunds(toUser : Principal, amount : Nat) : async () {
-    ensureInitialized(caller);
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admin can distribute funds");
     };
@@ -140,7 +178,6 @@ actor {
   };
 
   public shared ({ caller }) func adminTopUp(amount : Nat) : async () {
-    ensureInitialized(caller);
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admin can top up the wallet");
     };
@@ -151,10 +188,8 @@ actor {
   };
 
   public shared ({ caller }) func addOrderWithWallet(url : Text, price : Nat, package : Text, packageId : Nat) : async Nat {
-    ensureInitialized(caller);
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create orders");
-    };
+    // Auto-register user if not registered (handles state resets gracefully)
+    ensureRegistered(caller);
 
     let currentBalance = switch (userBalances.get(caller)) {
       case (?balance) { balance };
@@ -185,8 +220,8 @@ actor {
   };
 
   public query ({ caller }) func getOrderById(orderId : Nat) : async ?Order {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view orders");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to view orders");
     };
     let order = orders.get(orderId);
     switch (order) {
@@ -201,7 +236,6 @@ actor {
   };
 
   public shared ({ caller }) func updateOrderStatus(orderId : Nat, status : OrderStatus) : async () {
-    ensureInitialized(caller);
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admins can update order status");
     };
@@ -249,5 +283,46 @@ actor {
       Runtime.trap("Unauthorized: Only admin can access wallet balance");
     };
     adminWallet;
+  };
+
+  // Community [create text post and feed view for authenticated users ]
+
+  public shared ({ caller }) func createPost(content : Text) : async Nat {
+    ensureRegistered(caller);
+    let postId = nextPostId;
+    let newPost : Post = {
+      postId;
+      author = caller;
+      content;
+      timestamp = Time.now();
+    };
+    posts.add(postId, newPost);
+    nextPostId += 1;
+    postId;
+  };
+
+  public query ({ caller }) func getPost(postId : Nat) : async ?Post {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to view posts");
+    };
+    posts.get(postId);
+  };
+
+  public query ({ caller }) func getAllPosts() : async [Post] {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to view the feed");
+    };
+    posts.values().toArray();
+  };
+
+  public query ({ caller }) func getPostsByAuthor(author : Principal) : async [Post] {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be authenticated to view posts");
+    };
+    posts.values().filter(
+      func(post) {
+        post.author == author;
+      }
+    ).toArray();
   };
 };

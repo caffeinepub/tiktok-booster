@@ -1,10 +1,17 @@
-import { Link } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, ExternalLink } from 'lucide-react';
-import { packages } from '@/lib/packages';
-import { formatPKR } from '@/lib/format';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { formatPKR } from "@/lib/format";
+import { packages } from "@/lib/packages";
+import { Link } from "@tanstack/react-router";
+import { CheckCircle2, ExternalLink } from "lucide-react";
 
 interface OrderConfirmationPanelProps {
   orderId: bigint;
@@ -12,8 +19,12 @@ interface OrderConfirmationPanelProps {
   videoUrl: string;
 }
 
-export default function OrderConfirmationPanel({ orderId, packageType, videoUrl }: OrderConfirmationPanelProps) {
-  const selectedPackage = packages.find(p => p.id === packageType);
+export default function OrderConfirmationPanel({
+  orderId,
+  packageType,
+  videoUrl,
+}: OrderConfirmationPanelProps) {
+  const selectedPackage = packages.find((p) => p.id === packageType);
 
   return (
     <Card className="max-w-2xl mx-auto border-2 border-primary/20 shadow-xl">
@@ -36,24 +47,29 @@ export default function OrderConfirmationPanel({ orderId, packageType, videoUrl 
               #{orderId.toString()}
             </Badge>
           </div>
-          
+
           {selectedPackage && (
             <>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Package</span>
                 <span className="font-semibold">{selectedPackage.name}</span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Price</span>
-                <span className="text-2xl font-bold text-primary">{formatPKR(selectedPackage.price)}</span>
+                <span className="text-2xl font-bold text-primary">
+                  {formatPKR(selectedPackage.price)}
+                </span>
               </div>
-              
+
               <div className="pt-4 border-t border-border space-y-2">
                 <p className="text-sm font-medium">What you'll get:</p>
                 <ul className="space-y-1">
-                  {selectedPackage.benefits.map((benefit, idx) => (
-                    <li key={idx} className="text-sm text-muted-foreground flex items-center gap-2">
+                  {selectedPackage.benefits.map((benefit) => (
+                    <li
+                      key={benefit}
+                      className="text-sm text-muted-foreground flex items-center gap-2"
+                    >
                       <CheckCircle2 className="w-4 h-4 text-primary" />
                       {benefit}
                     </li>
@@ -62,10 +78,14 @@ export default function OrderConfirmationPanel({ orderId, packageType, videoUrl 
               </div>
             </>
           )}
-          
+
           <div className="pt-4 border-t border-border">
-            <span className="text-sm text-muted-foreground block mb-2">Video URL</span>
-            <p className="text-sm break-all bg-background p-3 rounded-md">{videoUrl}</p>
+            <span className="text-sm text-muted-foreground block mb-2">
+              Video URL
+            </span>
+            <p className="text-sm break-all bg-background p-3 rounded-md">
+              {videoUrl}
+            </p>
           </div>
         </div>
 
@@ -86,9 +106,7 @@ export default function OrderConfirmationPanel({ orderId, packageType, videoUrl 
           </Link>
         </Button>
         <Button asChild variant="outline" className="flex-1">
-          <Link to="/">
-            Create Another Order
-          </Link>
+          <Link to="/">Create Another Order</Link>
         </Button>
       </CardFooter>
     </Card>

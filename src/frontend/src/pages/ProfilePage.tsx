@@ -1,42 +1,66 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useSaveCallerUserProfile } from '@/hooks/useQueries';
-import { useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
-import { Loader2, User, Edit, Save, LogOut, KeyRound, Upload, Copy, Check } from 'lucide-react';
-import { copyToClipboard } from '@/lib/copyToClipboard';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import {
+  useGetCallerUserProfile,
+  useSaveCallerUserProfile,
+} from "@/hooks/useQueries";
+import { copyToClipboard } from "@/lib/copyToClipboard";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import {
+  Check,
+  Copy,
+  Edit,
+  KeyRound,
+  Loader2,
+  LogOut,
+  Save,
+  Upload,
+  User,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const searchParams = useSearch({ strict: false }) as { setup?: string };
   const { identity, clear, isInitializing } = useInternetIdentity();
   const queryClient = useQueryClient();
-  const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
+  const {
+    data: userProfile,
+    isLoading: profileLoading,
+    isFetched,
+  } = useGetCallerUserProfile();
   const saveProfileMutation = useSaveCallerUserProfile();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
-  const [bio, setBio] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [principalCopied, setPrincipalCopied] = useState(false);
 
   const isAuthenticated = !!identity;
   const showLoginPrompt = !isInitializing && !isAuthenticated;
-  const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
+  const showProfileSetup =
+    isAuthenticated && !profileLoading && isFetched && userProfile === null;
 
   // Enable edit mode if coming from signup or if profile doesn't exist
   useEffect(() => {
-    if (searchParams.setup === '1' || showProfileSetup) {
+    if (searchParams.setup === "1" || showProfileSetup) {
       setIsEditMode(true);
     }
   }, [searchParams.setup, showProfileSetup]);
@@ -45,10 +69,10 @@ export default function ProfilePage() {
   useEffect(() => {
     if (userProfile) {
       setProfilePicture(userProfile.profilePicture || null);
-      setUsername(userProfile.username || '');
-      setBio(userProfile.bio || '');
-      setEmail(userProfile.email || '');
-      setPhone(userProfile.phone || '');
+      setUsername(userProfile.username || "");
+      setBio(userProfile.bio || "");
+      setEmail(userProfile.email || "");
+      setPhone(userProfile.phone || "");
     }
   }, [userProfile]);
 
@@ -56,13 +80,13 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select a valid image file');
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB');
+      toast.error("Image size must be less than 5MB");
       return;
     }
 
@@ -76,17 +100,17 @@ export default function ProfilePage() {
 
   const handleSaveChanges = async () => {
     if (!username.trim()) {
-      toast.error('Username is required');
+      toast.error("Username is required");
       return;
     }
 
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Please enter a valid email address');
+      toast.error("Please enter a valid email address");
       return;
     }
 
     if (phone && !/^\+?[\d\s\-()]+$/.test(phone)) {
-      toast.error('Please enter a valid phone number');
+      toast.error("Please enter a valid phone number");
       return;
     }
 
@@ -100,12 +124,13 @@ export default function ProfilePage() {
       });
 
       setIsEditMode(false);
-      toast.success('Profile saved successfully!', {
-        description: 'Your changes have been saved',
+      toast.success("Profile saved successfully!", {
+        description: "Your changes have been saved",
       });
     } catch (error) {
-      toast.error('Failed to save profile', {
-        description: error instanceof Error ? error.message : 'Please try again',
+      toast.error("Failed to save profile", {
+        description:
+          error instanceof Error ? error.message : "Please try again",
       });
     }
   };
@@ -113,35 +138,35 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     await clear();
     queryClient.clear();
-    toast.success('Logged out successfully', {
-      description: 'You have been logged out',
+    toast.success("Logged out successfully", {
+      description: "You have been logged out",
     });
-    navigate({ to: '/' });
+    navigate({ to: "/" });
   };
 
   const handleChangePassword = () => {
-    const iiUrl = 'https://identity.ic0.app';
-    window.open(iiUrl, '_blank', 'noopener,noreferrer');
-    toast.info('Opening Internet Identity', {
-      description: 'Manage your credentials in the new tab',
+    const iiUrl = "https://identity.ic0.app";
+    window.open(iiUrl, "_blank", "noopener,noreferrer");
+    toast.info("Opening Internet Identity", {
+      description: "Manage your credentials in the new tab",
     });
   };
 
   const handleCopyPrincipalId = async () => {
     if (!identity) return;
-    
+
     const principalId = identity.getPrincipal().toString();
     const success = await copyToClipboard(principalId);
-    
+
     if (success) {
       setPrincipalCopied(true);
-      toast.success('Principal ID copied!', {
-        description: 'You can now share this ID to receive PKR',
+      toast.success("Principal ID copied!", {
+        description: "You can now share this ID to receive PKR",
       });
       setTimeout(() => setPrincipalCopied(false), 2000);
     } else {
-      toast.error('Failed to copy Principal ID', {
-        description: 'Please try again or copy manually',
+      toast.error("Failed to copy Principal ID", {
+        description: "Please try again or copy manually",
       });
     }
   };
@@ -160,14 +185,14 @@ export default function ProfilePage() {
             <User className="w-16 h-16 text-muted-foreground" />
             <div className="flex flex-col gap-3 w-full">
               <Button
-                onClick={() => navigate({ to: '/signup' })}
+                onClick={() => navigate({ to: "/signup" })}
                 size="lg"
                 className="w-full"
               >
                 Sign Up
               </Button>
               <Button
-                onClick={() => navigate({ to: '/' })}
+                onClick={() => navigate({ to: "/" })}
                 variant="outline"
                 size="lg"
                 className="w-full"
@@ -201,7 +226,9 @@ export default function ProfilePage() {
               <div>
                 <CardTitle className="text-2xl sm:text-3xl">Profile</CardTitle>
                 <CardDescription>
-                  {isEditMode ? 'Edit your profile information' : 'View your profile information'}
+                  {isEditMode
+                    ? "Edit your profile information"
+                    : "View your profile information"}
                 </CardDescription>
               </div>
               {!isEditMode && (
@@ -221,9 +248,16 @@ export default function ProfilePage() {
             {/* Profile Picture */}
             <div className="flex flex-col items-center gap-4">
               <Avatar className="w-32 h-32">
-                <AvatarImage src={profilePicture || undefined} alt={username || 'User'} />
+                <AvatarImage
+                  src={profilePicture || undefined}
+                  alt={username || "User"}
+                />
                 <AvatarFallback className="text-3xl">
-                  {username ? username.charAt(0).toUpperCase() : <User className="w-12 h-12" />}
+                  {username ? (
+                    username.charAt(0).toUpperCase()
+                  ) : (
+                    <User className="w-12 h-12" />
+                  )}
                 </AvatarFallback>
               </Avatar>
               {isEditMode && (
@@ -242,7 +276,9 @@ export default function ProfilePage() {
                     onChange={handleImageUpload}
                     className="hidden"
                   />
-                  <p className="text-xs text-muted-foreground">Max 5MB, JPG/PNG</p>
+                  <p className="text-xs text-muted-foreground">
+                    Max 5MB, JPG/PNG
+                  </p>
                 </div>
               )}
             </div>
@@ -275,7 +311,8 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    This is your unique identifier for receiving PKR transfers. Share this ID with others to receive funds.
+                    This is your unique identifier for receiving PKR transfers.
+                    Share this ID with others to receive funds.
                   </p>
                 </div>
 
@@ -292,7 +329,7 @@ export default function ProfilePage() {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
                 disabled={!isEditMode}
-                className={!isEditMode ? 'bg-muted' : ''}
+                className={!isEditMode ? "bg-muted" : ""}
               />
             </div>
 
@@ -305,7 +342,7 @@ export default function ProfilePage() {
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Tell us about yourself"
                 disabled={!isEditMode}
-                className={!isEditMode ? 'bg-muted' : ''}
+                className={!isEditMode ? "bg-muted" : ""}
                 rows={4}
               />
             </div>
@@ -320,7 +357,7 @@ export default function ProfilePage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@example.com"
                 disabled={!isEditMode}
-                className={!isEditMode ? 'bg-muted' : ''}
+                className={!isEditMode ? "bg-muted" : ""}
               />
             </div>
 
@@ -334,7 +371,7 @@ export default function ProfilePage() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 234 567 8900"
                 disabled={!isEditMode}
-                className={!isEditMode ? 'bg-muted' : ''}
+                className={!isEditMode ? "bg-muted" : ""}
               />
             </div>
 
@@ -366,10 +403,10 @@ export default function ProfilePage() {
                       // Reset to original values
                       if (userProfile) {
                         setProfilePicture(userProfile.profilePicture || null);
-                        setUsername(userProfile.username || '');
-                        setBio(userProfile.bio || '');
-                        setEmail(userProfile.email || '');
-                        setPhone(userProfile.phone || '');
+                        setUsername(userProfile.username || "");
+                        setBio(userProfile.bio || "");
+                        setEmail(userProfile.email || "");
+                        setPhone(userProfile.phone || "");
                       }
                     }}
                     variant="outline"
@@ -396,7 +433,8 @@ export default function ProfilePage() {
                     Change Password
                   </Button>
                   <p className="text-xs text-muted-foreground text-center">
-                    Password management is handled through Internet Identity. Click above to manage your credentials in a new tab.
+                    Password management is handled through Internet Identity.
+                    Click above to manage your credentials in a new tab.
                   </p>
 
                   <Separator className="my-4" />

@@ -1,22 +1,29 @@
-import { useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Loader2, UserPlus, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useNavigate } from "@tanstack/react-router";
+import { CheckCircle, Loader2, UserPlus } from "lucide-react";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function SignUpPage() {
   const navigate = useNavigate();
-  const { login, loginStatus, identity, isInitializing } = useInternetIdentity();
+  const { login, loginStatus, identity, isInitializing } =
+    useInternetIdentity();
 
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
+  const isLoggingIn = loginStatus === "logging-in";
 
   // Redirect to profile with setup mode after successful login
   useEffect(() => {
     if (isAuthenticated && !isInitializing) {
-      navigate({ to: '/profile', search: { setup: '1' } });
+      navigate({ to: "/profile", search: { setup: "1" } });
     }
   }, [isAuthenticated, isInitializing, navigate]);
 
@@ -24,9 +31,9 @@ export default function SignUpPage() {
     try {
       await login();
     } catch (error: any) {
-      console.error('Login error:', error);
-      toast.error('Sign up failed', {
-        description: error.message || 'Please try again',
+      console.error("Login error:", error);
+      toast.error("Sign up failed", {
+        description: error.message || "Please try again",
       });
     }
   };
@@ -50,21 +57,23 @@ export default function SignUpPage() {
             <div className="flex justify-center mb-4">
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
-            <CardTitle className="text-2xl">You are already signed in</CardTitle>
+            <CardTitle className="text-2xl">
+              You are already signed in
+            </CardTitle>
             <CardDescription>
               You're all set! Go to your profile to manage your account.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <Button
-              onClick={() => navigate({ to: '/profile' })}
+              onClick={() => navigate({ to: "/profile" })}
               size="lg"
               className="w-full"
             >
               Go to Profile
             </Button>
             <Button
-              onClick={() => navigate({ to: '/' })}
+              onClick={() => navigate({ to: "/" })}
               variant="outline"
               size="lg"
               className="w-full"
@@ -121,17 +130,18 @@ export default function SignUpPage() {
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
-              By signing up, you agree to our terms of service and privacy policy
+              By signing up, you agree to our terms of service and privacy
+              policy
             </p>
           </div>
 
           <div className="pt-4 border-t">
             <p className="text-sm text-center text-muted-foreground">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Button
                 variant="link"
                 className="p-0 h-auto font-semibold"
-                onClick={() => navigate({ to: '/' })}
+                onClick={() => navigate({ to: "/" })}
               >
                 Go to Home & Log In
               </Button>

@@ -1,14 +1,21 @@
-import { RouterProvider, createRouter, createRoute, createRootRoute } from '@tanstack/react-router';
-import HomePage from './pages/HomePage';
-import CreditsPage from './pages/CreditsPage';
-import StatusPage from './pages/StatusPage';
-import AdminPage from './pages/AdminPage';
-import AdminUsersPage from './pages/AdminUsersPage';
-import DashboardPage from './pages/DashboardPage';
-import ProfilePage from './pages/ProfilePage';
-import SignUpPage from './pages/SignUpPage';
-import LoginPage from './pages/LoginPage';
-import AppLayout from './components/AppLayout';
+import {
+  RouterProvider,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import AppLayout from "./components/AppLayout";
+import AdminPage from "./pages/AdminPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+import CommunityPage from "./pages/CommunityPage";
+import CreditsPage from "./pages/CreditsPage";
+import DashboardPage from "./pages/DashboardPage";
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import ProfilePage from "./pages/ProfilePage";
+import SignUpPage from "./pages/SignUpPage";
+import SimulatorPage from "./pages/SimulatorPage";
+import StatusPage from "./pages/StatusPage";
 
 const rootRoute = createRootRoute({
   component: AppLayout,
@@ -16,56 +23,68 @@ const rootRoute = createRootRoute({
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: "/",
   component: HomePage,
 });
 
 const creditsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/credits',
+  path: "/credits",
   component: CreditsPage,
 });
 
 const statusRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/status/$id',
+  path: "/status/$id",
   component: StatusPage,
 });
 
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/admin',
+  path: "/admin",
   component: AdminPage,
 });
 
 const adminUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/admin/users',
+  path: "/admin/users",
   component: AdminUsersPage,
 });
 
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/dashboard',
+  path: "/dashboard",
   component: DashboardPage,
 });
 
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/profile',
+  path: "/profile",
   component: ProfilePage,
 });
 
 const signUpRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/signup',
+  path: "/signup",
   component: SignUpPage,
 });
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/login',
+  path: "/login",
   component: LoginPage,
+});
+
+const communityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/community",
+  component: CommunityPage,
+});
+
+const simulatorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/simulator",
+  component: SimulatorPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -78,11 +97,13 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   signUpRoute,
   loginRoute,
+  communityRoute,
+  simulatorRoute,
 ]);
 
 const router = createRouter({ routeTree });
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }

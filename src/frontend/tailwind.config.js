@@ -55,6 +55,13 @@ export default {
                     3: 'oklch(var(--chart-3))',
                     4: 'oklch(var(--chart-4))',
                     5: 'oklch(var(--chart-5))'
+                },
+                sim: {
+                    blue: 'oklch(var(--sim-blue) / <alpha-value>)',
+                    pink: 'oklch(var(--sim-pink) / <alpha-value>)',
+                    yellow: 'oklch(var(--sim-yellow) / <alpha-value>)',
+                    green: 'oklch(var(--sim-green) / <alpha-value>)',
+                    cyan: 'oklch(var(--sim-cyan) / <alpha-value>)',
                 }
             },
             borderRadius: {
@@ -63,7 +70,8 @@ export default {
                 sm: 'calc(var(--radius) - 4px)'
             },
             boxShadow: {
-                xs: '0 1px 2px 0 rgba(0,0,0,0.05)'
+                xs: '0 1px 2px 0 rgba(0,0,0,0.05)',
+                card: '0 4px 24px rgba(0,0,0,0.4)',
             },
             fontFamily: {
                 sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
@@ -76,11 +84,16 @@ export default {
                 'accordion-up': {
                     from: { height: 'var(--radix-accordion-content-height)' },
                     to: { height: '0' }
+                },
+                'count-up': {
+                    from: { opacity: '0.5', transform: 'translateY(4px)' },
+                    to: { opacity: '1', transform: 'translateY(0)' }
                 }
             },
             animation: {
                 'accordion-down': 'accordion-down 0.2s ease-out',
-                'accordion-up': 'accordion-up 0.2s ease-out'
+                'accordion-up': 'accordion-up 0.2s ease-out',
+                'count-up': 'count-up 0.2s ease-out',
             }
         }
     },

@@ -10,6 +10,12 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AccountSummary {
+  'role' : string,
+  'caller' : Principal,
+  'adminWalletBalance' : bigint,
+  'userBalance' : bigint,
+}
 export interface Order {
   'url' : string,
   'status' : OrderStatus,
@@ -24,6 +30,12 @@ export type OrderStatus = { 'cancelled' : null } |
   { 'pending' : null } |
   { 'completed' : null } |
   { 'failed' : null };
+export interface Post {
+  'content' : string,
+  'author' : Principal,
+  'timestamp' : bigint,
+  'postId' : bigint,
+}
 export interface UserProfile {
   'bio' : [] | [string],
   'username' : string,
@@ -40,16 +52,20 @@ export interface _SERVICE {
   'adminDistributeFunds' : ActorMethod<[Principal, bigint], undefined>,
   'adminTopUp' : ActorMethod<[bigint], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createPost' : ActorMethod<[string], bigint>,
+  'getAccountSummary' : ActorMethod<[], AccountSummary>,
   'getAdminWalletBalance' : ActorMethod<[], bigint>,
   'getAdminWalletBalanceForAdminNavBar' : ActorMethod<[], bigint>,
-  'getAdminWalletBalanceLegacy' : ActorMethod<[], bigint>,
   'getAllOrders' : ActorMethod<[], Array<Order>>,
+  'getAllPosts' : ActorMethod<[], Array<Post>>,
   'getAllUsers' : ActorMethod<[], Array<[Principal, bigint]>>,
   'getBalance' : ActorMethod<[], bigint>,
   'getBalanceForAdminSidebar' : ActorMethod<[], bigint>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getOrderById' : ActorMethod<[bigint], [] | [Order]>,
+  'getPost' : ActorMethod<[bigint], [] | [Post]>,
+  'getPostsByAuthor' : ActorMethod<[Principal], Array<Post>>,
   'getUserBalance' : ActorMethod<[Principal], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,

@@ -1,31 +1,48 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { CheckCircle2, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
-import AppHeader from '@/components/AppHeader';
-import AppFooter from '@/components/AppFooter';
-import OrderConfirmationPanel from '@/components/OrderConfirmationPanel';
-import { packages } from '@/lib/packages';
-import { formatPKR } from '@/lib/format';
-import { validateUrl } from '@/lib/validation';
-import { useCreateOrder } from '@/hooks/useOrders';
-import { normalizeBackendError } from '@/lib/backendError';
+import AppFooter from "@/components/AppFooter";
+import AppHeader from "@/components/AppHeader";
+import InsufficientBalanceGuidance from "@/components/InsufficientBalanceGuidance";
+import OrderConfirmationPanel from "@/components/OrderConfirmationPanel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useCreateOrder } from "@/hooks/useOrders";
+import {
+  isInsufficientBalanceError,
+  normalizeBackendError,
+} from "@/lib/backendError";
+import { formatPKR } from "@/lib/format";
+import { packages } from "@/lib/packages";
+import { validateUrl } from "@/lib/validation";
+import { Link } from "@tanstack/react-router";
+import { BarChart3, CheckCircle2, LogIn, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function HomePage() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [urlError, setUrlError] = useState('');
+  const [videoUrl, setVideoUrl] = useState("");
+  const [urlError, setUrlError] = useState("");
   const [confirmedOrderId, setConfirmedOrderId] = useState<bigint | null>(null);
+  const [showInsufficientBalanceGuidance, setShowInsufficientBalanceGuidance] =
+    useState(false);
 
   const createOrderMutation = useCreateOrder();
+  const { identity, login, isLoggingIn } = useInternetIdentity();
+  const isAuthenticated = !!identity;
 
   const handlePackageSelect = (packageId: string) => {
     setSelectedPackage(packageId);
-    const pkg = packages.find(p => p.id === packageId);
+    const pkg = packages.find((p) => p.id === packageId);
     toast.success(`${pkg?.name} package selected!`, {
       description: `${formatPKR(pkg?.price || 0)} - ${pkg?.benefits[0]}`,
     });
@@ -33,24 +50,31 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUrlError('');
+    setUrlError("");
+    setShowInsufficientBalanceGuidance(false);
 
-    // Validate package selection
-    if (!selectedPackage) {
-      toast.error('Please select a package first');
+    // Must be logged in
+    if (!isAuthenticated) {
+      toast.error("Login Required", {
+        description: "Please log in to place an order",
+      });
       return;
     }
 
-    // Validate URL
+    if (!selectedPackage) {
+      toast.error("Please select a package first");
+      return;
+    }
+
     const urlValidation = validateUrl(videoUrl);
     if (!urlValidation.valid) {
-      setUrlError(urlValidation.error || 'Invalid URL');
+      setUrlError(urlValidation.error || "Invalid URL");
       return;
     }
 
-    const pkg = packages.find(p => p.id === selectedPackage);
+    const pkg = packages.find((p) => p.id === selectedPackage);
     if (!pkg) {
-      toast.error('Selected package not found');
+      toast.error("Selected package not found");
       return;
     }
 
@@ -63,24 +87,30 @@ export default function HomePage() {
       });
 
       setConfirmedOrderId(orderId);
-      
-      toast.success('Order created successfully!', {
+
+      toast.success("Order created successfully!", {
         description: `Order #${orderId.toString()} has been created`,
       });
     } catch (error) {
       const errorMessage = normalizeBackendError(error);
-      toast.error('Failed to create order', {
-        description: errorMessage,
-      });
+
+      if (isInsufficientBalanceError(error)) {
+        setShowInsufficientBalanceGuidance(true);
+        toast.error("Insufficient Balance", {
+          description: "Please request a top-up from an administrator",
+        });
+      } else {
+        toast.error("Failed to create order", {
+          description: errorMessage,
+        });
+      }
     }
   };
 
-  // If order is confirmed, show confirmation panel
   if (confirmedOrderId && selectedPackage) {
     return (
       <div className="min-h-screen">
         <AppHeader />
-        
         <main className="container mx-auto px-4 py-12">
           <OrderConfirmationPanel
             orderId={confirmedOrderId}
@@ -88,7 +118,6 @@ export default function HomePage() {
             videoUrl={videoUrl}
           />
         </main>
-
         <AppFooter />
       </div>
     );
@@ -97,13 +126,15 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       <AppHeader />
-      
+
       <main className="container mx-auto px-4">
         {/* Hero Section */}
         <section className="text-center py-16 space-y-6">
           <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
             <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">100% Safe & Secure</span>
+            <span className="text-sm font-medium text-primary">
+              100% Safe &amp; Secure
+            </span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
             TikTok Booster Pro
@@ -111,17 +142,35 @@ export default function HomePage() {
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
             Instant Views • Likes • Followers | 100% Safe
           </p>
+          {/* Simulator shortcut */}
+          <div className="pt-2">
+            <Link to="/simulator">
+              <Button
+                data-ocid="home.simulator.link"
+                variant="outline"
+                size="sm"
+                className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <BarChart3 className="w-4 h-4" />
+                Try Engagement Simulator
+              </Button>
+            </Link>
+          </div>
         </section>
 
         {/* Packages Section */}
         <section className="py-12">
-          <h2 className="text-3xl font-bold text-center mb-12">Choose Your Package</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Choose Your Package
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
             {packages.map((pkg) => (
-              <Card 
+              <Card
                 key={pkg.id}
                 className={`relative transition-all duration-300 hover:scale-105 hover:shadow-2xl ${
-                  selectedPackage === pkg.id ? 'border-2 border-primary shadow-xl' : ''
+                  selectedPackage === pkg.id
+                    ? "border-2 border-primary shadow-xl"
+                    : ""
                 }`}
               >
                 {pkg.popular && (
@@ -132,30 +181,45 @@ export default function HomePage() {
                 <CardHeader className="text-center space-y-4">
                   <div className="text-4xl">{pkg.icon}</div>
                   <CardTitle className="text-2xl">{pkg.name}</CardTitle>
-                  <div className="text-3xl font-bold text-primary">{formatPKR(pkg.price)}</div>
-                  <CardDescription className="text-base">{pkg.description}</CardDescription>
+                  <div className="text-3xl font-bold text-primary">
+                    {formatPKR(pkg.price)}
+                  </div>
+                  <CardDescription className="text-base">
+                    {pkg.description}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {pkg.benefits.map((benefit, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
+                  {pkg.benefits.map((benefit) => (
+                    <div key={benefit} className="flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
                       <span className="text-sm">{benefit}</span>
                     </div>
                   ))}
                 </CardContent>
                 <CardFooter>
-                  <Button 
+                  <Button
                     className="w-full text-lg py-6"
                     onClick={() => handlePackageSelect(pkg.id)}
-                    variant={selectedPackage === pkg.id ? 'default' : 'outline'}
+                    variant={selectedPackage === pkg.id ? "default" : "outline"}
                   >
-                    {selectedPackage === pkg.id ? 'Selected ✓' : 'Select Package'}
+                    {selectedPackage === pkg.id
+                      ? "Selected ✓"
+                      : "Select Package"}
                   </Button>
                 </CardFooter>
               </Card>
             ))}
           </div>
         </section>
+
+        {/* Insufficient Balance Guidance */}
+        {showInsufficientBalanceGuidance && identity && (
+          <section className="py-6 max-w-2xl mx-auto">
+            <InsufficientBalanceGuidance
+              principalId={identity.getPrincipal().toString()}
+            />
+          </section>
+        )}
 
         {/* Order Form Section */}
         <section className="py-12 max-w-2xl mx-auto">
@@ -167,9 +231,35 @@ export default function HomePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Login prompt if not authenticated */}
+              {!isAuthenticated && (
+                <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-5 text-center space-y-3">
+                  <LogIn className="w-8 h-8 text-primary mx-auto" />
+                  <p className="text-sm font-medium">
+                    You need to log in to place an order
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button
+                      onClick={login}
+                      disabled={isLoggingIn}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      {isLoggingIn ? "Logging in..." : "Log In"}
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/signup">Sign Up</Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="videoUrl" className="text-base">TikTok Video URL</Label>
+                  <Label htmlFor="videoUrl" className="text-base">
+                    TikTok Video URL
+                  </Label>
                   <Input
                     id="videoUrl"
                     type="url"
@@ -177,9 +267,9 @@ export default function HomePage() {
                     value={videoUrl}
                     onChange={(e) => {
                       setVideoUrl(e.target.value);
-                      setUrlError('');
+                      setUrlError("");
                     }}
-                    className={`text-base py-6 ${urlError ? 'border-destructive' : ''}`}
+                    className={`text-base py-6 ${urlError ? "border-destructive" : ""}`}
                   />
                   {urlError && (
                     <p className="text-sm text-destructive">{urlError}</p>
@@ -188,20 +278,30 @@ export default function HomePage() {
 
                 {selectedPackage && (
                   <div className="bg-muted/50 rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground mb-2">Selected Package:</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Selected Package:
+                    </p>
                     <p className="font-semibold">
-                      {packages.find(p => p.id === selectedPackage)?.name} - {formatPKR(packages.find(p => p.id === selectedPackage)?.price || 0)}
+                      {packages.find((p) => p.id === selectedPackage)?.name} -{" "}
+                      {formatPKR(
+                        packages.find((p) => p.id === selectedPackage)?.price ||
+                          0,
+                      )}
                     </p>
                   </div>
                 )}
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full text-lg py-6"
                   disabled={createOrderMutation.isPending}
                 >
                   <Sparkles className="w-5 h-5 mr-2" />
-                  {createOrderMutation.isPending ? 'Creating Order...' : 'Start Boosting'}
+                  {createOrderMutation.isPending
+                    ? "Creating Order..."
+                    : isAuthenticated
+                      ? "Start Boosting"
+                      : "Log In to Boost"}
                 </Button>
               </form>
             </CardContent>

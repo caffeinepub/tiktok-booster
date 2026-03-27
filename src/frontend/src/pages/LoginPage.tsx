@@ -1,22 +1,29 @@
-import { useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Loader2, LogIn, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useNavigate } from "@tanstack/react-router";
+import { CheckCircle, Loader2, LogIn } from "lucide-react";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, loginStatus, identity, isInitializing } = useInternetIdentity();
+  const { login, loginStatus, identity, isInitializing } =
+    useInternetIdentity();
 
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
+  const isLoggingIn = loginStatus === "logging-in";
 
   // Redirect to home after successful login
   useEffect(() => {
     if (isAuthenticated && !isInitializing) {
-      navigate({ to: '/' });
+      navigate({ to: "/" });
     }
   }, [isAuthenticated, isInitializing, navigate]);
 
@@ -24,9 +31,9 @@ export default function LoginPage() {
     try {
       await login();
     } catch (error: any) {
-      console.error('Login error:', error);
-      toast.error('Login failed', {
-        description: error.message || 'Please try again',
+      console.error("Login error:", error);
+      toast.error("Login failed", {
+        description: error.message || "Please try again",
       });
     }
   };
@@ -57,14 +64,14 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <Button
-              onClick={() => navigate({ to: '/' })}
+              onClick={() => navigate({ to: "/" })}
               size="lg"
               className="w-full"
             >
               Go to Home
             </Button>
             <Button
-              onClick={() => navigate({ to: '/profile' })}
+              onClick={() => navigate({ to: "/profile" })}
               variant="outline"
               size="lg"
               className="w-full"
@@ -127,11 +134,11 @@ export default function LoginPage() {
 
           <div className="pt-4 border-t">
             <p className="text-sm text-center text-muted-foreground">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <Button
                 variant="link"
                 className="p-0 h-auto font-semibold"
-                onClick={() => navigate({ to: '/signup' })}
+                onClick={() => navigate({ to: "/signup" })}
               >
                 Sign Up
               </Button>

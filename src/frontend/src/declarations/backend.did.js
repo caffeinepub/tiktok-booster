@@ -13,6 +13,12 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const AccountSummary = IDL.Record({
+  'role' : IDL.Text,
+  'caller' : IDL.Principal,
+  'adminWalletBalance' : IDL.Nat,
+  'userBalance' : IDL.Nat,
+});
 export const OrderStatus = IDL.Variant({
   'cancelled' : IDL.Null,
   'pending' : IDL.Null,
@@ -28,6 +34,12 @@ export const Order = IDL.Record({
   'orderId' : IDL.Nat,
   'price' : IDL.Nat,
   'packageId' : IDL.Nat,
+});
+export const Post = IDL.Record({
+  'content' : IDL.Text,
+  'author' : IDL.Principal,
+  'timestamp' : IDL.Int,
+  'postId' : IDL.Nat,
 });
 export const UserProfile = IDL.Record({
   'bio' : IDL.Opt(IDL.Text),
@@ -47,10 +59,12 @@ export const idlService = IDL.Service({
   'adminDistributeFunds' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
   'adminTopUp' : IDL.Func([IDL.Nat], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createPost' : IDL.Func([IDL.Text], [IDL.Nat], []),
+  'getAccountSummary' : IDL.Func([], [AccountSummary], ['query']),
   'getAdminWalletBalance' : IDL.Func([], [IDL.Nat], ['query']),
   'getAdminWalletBalanceForAdminNavBar' : IDL.Func([], [IDL.Nat], ['query']),
-  'getAdminWalletBalanceLegacy' : IDL.Func([], [IDL.Nat], ['query']),
   'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+  'getAllPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
   'getAllUsers' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Nat))],
@@ -61,6 +75,8 @@ export const idlService = IDL.Service({
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getOrderById' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
+  'getPost' : IDL.Func([IDL.Nat], [IDL.Opt(Post)], ['query']),
+  'getPostsByAuthor' : IDL.Func([IDL.Principal], [IDL.Vec(Post)], ['query']),
   'getUserBalance' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -81,6 +97,12 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const AccountSummary = IDL.Record({
+    'role' : IDL.Text,
+    'caller' : IDL.Principal,
+    'adminWalletBalance' : IDL.Nat,
+    'userBalance' : IDL.Nat,
+  });
   const OrderStatus = IDL.Variant({
     'cancelled' : IDL.Null,
     'pending' : IDL.Null,
@@ -96,6 +118,12 @@ export const idlFactory = ({ IDL }) => {
     'orderId' : IDL.Nat,
     'price' : IDL.Nat,
     'packageId' : IDL.Nat,
+  });
+  const Post = IDL.Record({
+    'content' : IDL.Text,
+    'author' : IDL.Principal,
+    'timestamp' : IDL.Int,
+    'postId' : IDL.Nat,
   });
   const UserProfile = IDL.Record({
     'bio' : IDL.Opt(IDL.Text),
@@ -115,10 +143,12 @@ export const idlFactory = ({ IDL }) => {
     'adminDistributeFunds' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
     'adminTopUp' : IDL.Func([IDL.Nat], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createPost' : IDL.Func([IDL.Text], [IDL.Nat], []),
+    'getAccountSummary' : IDL.Func([], [AccountSummary], ['query']),
     'getAdminWalletBalance' : IDL.Func([], [IDL.Nat], ['query']),
     'getAdminWalletBalanceForAdminNavBar' : IDL.Func([], [IDL.Nat], ['query']),
-    'getAdminWalletBalanceLegacy' : IDL.Func([], [IDL.Nat], ['query']),
     'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+    'getAllPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
     'getAllUsers' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Nat))],
@@ -129,6 +159,8 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getOrderById' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
+    'getPost' : IDL.Func([IDL.Nat], [IDL.Opt(Post)], ['query']),
+    'getPostsByAuthor' : IDL.Func([IDL.Principal], [IDL.Vec(Post)], ['query']),
     'getUserBalance' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
