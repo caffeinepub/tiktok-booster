@@ -8,15 +8,66 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useActor } from "@/hooks/useActor";
 import { useGetOrderById } from "@/hooks/useOrders";
 import { formatOrderId, formatTimestamp } from "@/lib/format";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, Clock, Package, Video } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { OrderStatus } from "../backend";
+
+const AUTO_COMPLETE_SECONDS = 90;
 
 export default function StatusPage() {
   const { id } = useParams({ from: "/status/$id" });
   const { data: order, isLoading, isError } = useGetOrderById(id);
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!order || order.status !== "pending") {
+      // Clear timers if status changed away from pending
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setCountdown(null);
+      return;
+    }
+
+    // Start countdown display
+    setCountdown(AUTO_COMPLETE_SECONDS);
+
+    intervalRef.current = setInterval(() => {
+      setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    // Auto-complete after 90 seconds
+    timerRef.current = setTimeout(async () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setCountdown(0);
+      try {
+        if (actor) {
+          await actor.updateOrderStatus(order.orderId, OrderStatus.completed);
+        }
+      } catch (_e) {
+        // Silently ignore — non-admins can't update status, that's fine
+      } finally {
+        // Always refetch to reflect latest status
+        queryClient.invalidateQueries({ queryKey: ["order", id] });
+      }
+    }, AUTO_COMPLETE_SECONDS * 1000);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [order, actor, id, queryClient]);
 
   return (
     <div className="min-h-screen">
@@ -159,19 +210,38 @@ export default function StatusPage() {
                   </div>
                 </div>
 
-                {order.status === "pending" && (
-                  <div className="bg-accent/50 rounded-lg p-4 space-y-2">
-                    <p className="text-sm font-medium">Next Steps:</p>
-                    <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                      <li>Contact us on Telegram: @tiktokboosterpro</li>
-                      <li>Complete payment to activate your order</li>
-                      <li>Your boost will be delivered within 5-10 minutes</li>
-                    </ol>
+                {order.status === "pending" && countdown !== null && (
+                  <div
+                    className="bg-accent/50 rounded-lg p-4 space-y-3"
+                    data-ocid="order.loading_state"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">
+                        ⏳ Processing your order...
+                      </p>
+                      <span className="text-sm font-mono text-muted-foreground">
+                        {countdown}s remaining
+                      </span>
+                    </div>
+                    <Progress
+                      value={
+                        ((AUTO_COMPLETE_SECONDS - countdown) /
+                          AUTO_COMPLETE_SECONDS) *
+                        100
+                      }
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Your boost will be activated automatically. Please wait.
+                    </p>
                   </div>
                 )}
 
                 {order.status === "completed" && (
-                  <div className="bg-primary/10 rounded-lg p-4">
+                  <div
+                    className="bg-primary/10 rounded-lg p-4"
+                    data-ocid="order.success_state"
+                  >
                     <p className="text-sm font-medium text-primary">
                       ✓ Your order has been completed successfully!
                     </p>

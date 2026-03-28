@@ -214,25 +214,15 @@ export function getSecretParameter(paramName: string): string | null {
 }
 
 /**
- * Checks if the admin token is present in the URL hash.
+ * Checks if an admin token is present in the URL (query string or hash)
  */
 export function hasAdminTokenInUrl(): boolean {
-  const hash = window.location.hash;
-  if (!hash || hash.length <= 1) return false;
-  const hashContent = hash.substring(1);
-  const params = new URLSearchParams(
-    hashContent.includes("?") ? hashContent.split("?")[1] : hashContent,
-  );
-  return params.has("caffeineAdminToken");
+  return getUrlParameter("caffeineAdminToken") !== null;
 }
 
 /**
- * Checks if the admin token is stored in sessionStorage.
+ * Checks if an admin token is stored in sessionStorage
  */
 export function hasAdminTokenInSession(): boolean {
-  try {
-    return sessionStorage.getItem("caffeineAdminToken") !== null;
-  } catch {
-    return false;
-  }
+  return getSessionParameter("caffeineAdminToken") !== null;
 }
