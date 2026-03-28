@@ -14,6 +14,9 @@ actor {
   var nextOrderId = 1;
   var adminWallet : Nat = 10_000;
 
+  // Hardcoded admin email — this user always gets admin access
+  let ADMIN_EMAIL : Text = "tayyabrandhawa007@gmail.com";
+
   let userBalances = Map.empty<Principal, Nat>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let orders = Map.empty<Nat, Order>();
@@ -59,44 +62,85 @@ actor {
     timestamp : Int;
   };
 
-  // New type to return account summary for frontend
   public type AccountSummary = {
     caller : Principal;
-    role : Text; // "admin" or "user"
+    role : Text;
     userBalance : Nat;
     adminWalletBalance : Nat;
   };
 
-  // Helper: auto-register user in access control if not already registered
+  // Check if caller's stored profile email is the hardcoded admin email
+  func isAdminByEmail(caller : Principal) : Bool {
+    switch (userProfiles.get(caller)) {
+      case (?profile) {
+        switch (profile.email) {
+          case (?email) { email == ADMIN_EMAIL };
+          case (null) { false };
+        };
+      };
+      case (null) { false };
+    };
+  };
+
+  // Check admin by role OR by email (email overrides everything)
+  func isAdminUser(caller : Principal) : Bool {
+    AccessControl.isAdmin(accessControlState, caller) or isAdminByEmail(caller);
+  };
+
+  // Auto-register user in access control if not already registered
   func ensureRegistered(caller : Principal) {
     if (caller.isAnonymous()) {
       Runtime.trap("Must be authenticated to perform this action");
     };
     switch (accessControlState.userRoles.get(caller)) {
       case (null) {
-        // Not registered yet — register as user automatically
-        accessControlState.userRoles.add(caller, #user);
+        if (not accessControlState.adminAssigned or isAdminByEmail(caller)) {
+          accessControlState.userRoles.add(caller, #admin);
+          accessControlState.adminAssigned := true;
+        } else {
+          accessControlState.userRoles.add(caller, #user);
+        };
       };
-      case (?_) {}; // Already registered
+      case (?_) {
+        // Already registered — but still upgrade to admin if email matches
+        if (isAdminByEmail(caller)) {
+          accessControlState.userRoles.add(caller, #admin);
+          accessControlState.adminAssigned := true;
+        };
+      };
     };
   };
 
+  // Claim admin role based on stored profile email
+  // Call this after saving your profile if you are the admin
+  public shared ({ caller }) func claimAdminRole() : async Bool {
+    if (caller.isAnonymous()) { return false };
+    if (isAdminByEmail(caller)) {
+      accessControlState.userRoles.add(caller, #admin);
+      accessControlState.adminAssigned := true;
+      switch (userBalances.get(caller)) {
+        case (null) { userBalances.add(caller, 0) };
+        case (?_) {};
+      };
+      return true;
+    };
+    return false;
+  };
+
   public query ({ caller }) func getAccountSummary() : async AccountSummary {
-    let callerRole = switch (accessControlState.userRoles.get(caller)) {
-      case (?role) { role };
-      case (null) { #user }; // default for unregistered
+    let byRole = switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) { true };
+      case (_) { false };
     };
-    let roleString = switch (callerRole) {
-      case (#admin) { "admin" };
-      case (_) { "user" };
-    };
+    let isAdmin = byRole or isAdminByEmail(caller);
+    let roleString = if (isAdmin) "admin" else "user";
 
     let userBalance = switch (userBalances.get(caller)) {
       case (?balance) { balance };
       case (null) { 0 };
     };
 
-    let adminBalance = if (callerRole == #admin) { adminWallet } else { 0 };
+    let adminBalance = if (isAdmin) { adminWallet } else { 0 };
 
     {
       caller;
@@ -114,7 +158,7 @@ actor {
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (caller != user and not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
@@ -125,25 +169,41 @@ actor {
       Runtime.trap("Must be authenticated to save profiles");
     };
     userProfiles.add(caller, profile);
+    // Auto-upgrade to admin if email matches
+    switch (profile.email) {
+      case (?email) {
+        if (email == ADMIN_EMAIL) {
+          accessControlState.userRoles.add(caller, #admin);
+          accessControlState.adminAssigned := true;
+          switch (userBalances.get(caller)) {
+            case (null) { userBalances.add(caller, 0) };
+            case (?_) {};
+          };
+        };
+      };
+      case (null) {};
+    };
   };
 
-  // New user onboarding: gives 25 PKR welcome bonus from admin wallet
+  // New user onboarding: gives 25 PKR welcome bonus from admin wallet (regular users only)
   public shared ({ caller }) func onboarding() : async () {
-    // Auto-register user in access control if not yet registered
     ensureRegistered(caller);
 
     switch (userBalances.get(caller)) {
       case (?_existingBalance) {
-        Runtime.trap("User already exists in the database");
+        return;
       };
       case (null) {
-        let bonus : Nat = 25;
-        if (adminWallet >= bonus) {
-          adminWallet -= bonus;
-          userBalances.add(caller, bonus);
-        } else {
-          // If admin wallet is low, still register user with 0 balance
+        if (isAdminUser(caller)) {
           userBalances.add(caller, 0);
+        } else {
+          let bonus : Nat = 25;
+          if (adminWallet >= bonus) {
+            adminWallet -= bonus;
+            userBalances.add(caller, bonus);
+          } else {
+            userBalances.add(caller, 0);
+          };
         };
       };
     };
@@ -160,14 +220,14 @@ actor {
   };
 
   public query ({ caller }) func getAdminWalletBalance() : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admin can access wallet balance");
     };
     adminWallet;
   };
 
   public shared ({ caller }) func adminDistributeFunds(toUser : Principal, amount : Nat) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admin can distribute funds");
     };
     let currentBalance = switch (userBalances.get(toUser)) {
@@ -182,20 +242,18 @@ actor {
   };
 
   public shared ({ caller }) func adminTopUp(amount : Nat) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admin can top up the wallet");
     };
     if (amount == 0) {
-      Runtime.trap("Cannot top up with zero amount. Please specify a positive amount.");
+      Runtime.trap("Cannot top up with zero amount.");
     };
     adminWallet += amount;
   };
 
   public shared ({ caller }) func addOrderWithWallet(url : Text, price : Nat, package : Text, packageId : Nat) : async Nat {
-    // Auto-register user if not registered (handles state resets gracefully)
     ensureRegistered(caller);
 
-    // Ensure user has a balance entry
     switch (userBalances.get(caller)) {
       case (null) { userBalances.add(caller, 0) };
       case (?_) {};
@@ -236,7 +294,7 @@ actor {
     let order = orders.get(orderId);
     switch (order) {
       case (?order) {
-        if (order.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+        if (order.owner != caller and not isAdminUser(caller)) {
           Runtime.trap("Unauthorized: Can only view your own orders");
         };
         ?order;
@@ -246,7 +304,7 @@ actor {
   };
 
   public shared ({ caller }) func updateOrderStatus(orderId : Nat, status : OrderStatus) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admins can update order status");
     };
     let order = switch (orders.get(orderId)) {
@@ -258,21 +316,21 @@ actor {
   };
 
   public query ({ caller }) func getAllUsers() : async [(Principal, Nat)] {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admins can view all users");
     };
     userBalances.toArray();
   };
 
   public query ({ caller }) func getAllOrders() : async [Order] {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admins can access all orders");
     };
     orders.values().toArray();
   };
 
   public query ({ caller }) func getUserBalance(user : Principal) : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admin can access wallet balance");
     };
     switch (userBalances.get(user)) {
@@ -282,20 +340,20 @@ actor {
   };
 
   public query ({ caller }) func getAdminWalletBalanceForAdminNavBar() : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admin can access wallet balance");
     };
     adminWallet;
   };
 
   public query ({ caller }) func getBalanceForAdminSidebar() : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+    if (not isAdminUser(caller)) {
       Runtime.trap("Unauthorized: Only admin can access wallet balance");
     };
     adminWallet;
   };
 
-  // Community [create text post and feed view for authenticated users ]
+  // Community
 
   public shared ({ caller }) func createPost(content : Text) : async Nat {
     ensureRegistered(caller);

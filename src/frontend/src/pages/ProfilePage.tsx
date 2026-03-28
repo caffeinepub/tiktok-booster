@@ -17,6 +17,10 @@ import {
   useSaveCallerUserProfile,
 } from "@/hooks/useQueries";
 import { copyToClipboard } from "@/lib/copyToClipboard";
+import {
+  getAccountSummaryQueryKey,
+  getIsCallerAdminQueryKey,
+} from "@/lib/queryKeys";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -124,6 +128,26 @@ export default function ProfilePage() {
       });
 
       setIsEditMode(false);
+
+      // Refetch account summary so admin role is picked up immediately
+      const principalId = identity?.getPrincipal().toString();
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getAccountSummaryQueryKey(principalId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getIsCallerAdminQueryKey(principalId),
+        }),
+      ]);
+      await Promise.all([
+        queryClient.refetchQueries({
+          queryKey: getAccountSummaryQueryKey(principalId),
+        }),
+        queryClient.refetchQueries({
+          queryKey: getIsCallerAdminQueryKey(principalId),
+        }),
+      ]);
+
       toast.success("Profile saved successfully!", {
         description: "Your changes have been saved",
       });

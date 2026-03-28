@@ -209,8 +209,9 @@ export default function SimulatorPage() {
     [DEFAULT_VIDEO_ID]: { ...DEFAULT_METRICS },
   });
 
-  // Apply any pending boosts from completed orders on mount
-  useEffect(() => {
+  // Apply pending boosts from completed orders — runs on mount AND polls every 3s
+  // so boosts are applied even when the user is already on this page
+  const applyPendingBoosts = useCallback(() => {
     const pendingBoosts = getPendingBoosts();
     if (pendingBoosts.length === 0) return;
 
@@ -265,6 +266,14 @@ export default function SimulatorPage() {
         "Your video stats have been automatically increased from your order.",
     });
   }, []);
+
+  useEffect(() => {
+    // Apply on mount
+    applyPendingBoosts();
+    // Poll every 3 seconds to catch boosts that complete while we're already on this page
+    const interval = setInterval(applyPendingBoosts, 3000);
+    return () => clearInterval(interval);
+  }, [applyPendingBoosts]);
 
   const metrics = videos[currentVideoId] ?? DEFAULT_METRICS;
 

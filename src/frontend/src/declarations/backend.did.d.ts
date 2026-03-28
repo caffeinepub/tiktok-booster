@@ -52,6 +52,7 @@ export interface _SERVICE {
   'adminDistributeFunds' : ActorMethod<[Principal, bigint], undefined>,
   'adminTopUp' : ActorMethod<[bigint], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'claimAdminRole' : ActorMethod<[], boolean>,
   'createPost' : ActorMethod<[string], bigint>,
   'getAccountSummary' : ActorMethod<[], AccountSummary>,
   'getAdminWalletBalance' : ActorMethod<[], bigint>,

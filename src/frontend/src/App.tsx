@@ -10,6 +10,7 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import CommunityPage from "./pages/CommunityPage";
 import CreditsPage from "./pages/CreditsPage";
 import DashboardPage from "./pages/DashboardPage";
+import DistributePage from "./pages/DistributePage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -49,6 +50,12 @@ const adminUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/users",
   component: AdminUsersPage,
+});
+
+const adminDistributeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/distribute",
+  component: DistributePage,
 });
 
 const dashboardRoute = createRoute({
@@ -93,6 +100,7 @@ const routeTree = rootRoute.addChildren([
   statusRoute,
   adminRoute,
   adminUsersRoute,
+  adminDistributeRoute,
   dashboardRoute,
   profileRoute,
   signUpRoute,

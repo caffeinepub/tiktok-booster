@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAdminWalletStatus } from "@/hooks/useAdminWalletStatus";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useGetAccountSummary, useGetBalance } from "@/hooks/useQueries";
 import { formatBalance } from "@/lib/format";
@@ -31,7 +30,6 @@ export default function BalanceIndicator() {
   } = useGetBalance();
   const { data: accountSummary, isLoading: summaryLoading } =
     useGetAccountSummary();
-  const adminWalletStatus = useAdminWalletStatus();
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -41,6 +39,14 @@ export default function BalanceIndicator() {
 
   // Determine admin status from account summary
   const isAdmin = accountSummary?.role === "admin";
+
+  // For admin users, show adminWalletBalance; for regular users show their balance
+  const displayBalance: bigint | undefined = isAdmin
+    ? accountSummary?.adminWalletBalance
+    : balance;
+
+  // Loading state: admin waits for summary, user waits for balance
+  const isBalanceLoading = isAdmin ? summaryLoading : balanceLoading;
 
   const handleLogin = async () => {
     try {
@@ -91,6 +97,7 @@ export default function BalanceIndicator() {
               disabled={isLoggingIn}
               size="sm"
               className="w-full"
+              data-ocid="auth.login.button"
             >
               {isLoggingIn ? (
                 <>
@@ -110,12 +117,12 @@ export default function BalanceIndicator() {
     );
   }
 
-  // Logged in - show balance(s)
+  // Logged in - show balance
   return (
     <div className="fixed-safe-top-right z-50">
       <Card className="shadow-lg border-2">
         <CardContent className="p-3 space-y-2">
-          {/* Admin Badge - shown when admin status is confirmed */}
+          {/* Admin Badge */}
           {isAdmin && !summaryLoading && (
             <div className="flex items-center justify-center pb-2 border-b">
               <Badge variant="default" className="gap-1 bg-primary/90">
@@ -125,17 +132,23 @@ export default function BalanceIndicator() {
             </div>
           )}
 
-          {/* User Balance */}
+          {/* Balance */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Wallet className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium">Balance:</span>
             </div>
             <div className="flex items-center gap-2">
-              {balanceLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              ) : balanceError ? (
-                <div className="flex items-center gap-1">
+              {isBalanceLoading ? (
+                <Loader2
+                  className="w-4 h-4 animate-spin text-muted-foreground"
+                  data-ocid="balance.loading_state"
+                />
+              ) : balanceError && !isAdmin ? (
+                <div
+                  className="flex items-center gap-1"
+                  data-ocid="balance.error_state"
+                >
                   <AlertCircle className="w-4 h-4 text-destructive" />
                   <Button
                     onClick={handleRefresh}
@@ -143,6 +156,7 @@ export default function BalanceIndicator() {
                     variant="ghost"
                     size="sm"
                     className="h-6 px-2"
+                    data-ocid="balance.secondary_button"
                   >
                     <RefreshCw
                       className={`w-3 h-3 ${isRefreshing ? "animate-spin" : ""}`}
@@ -151,23 +165,26 @@ export default function BalanceIndicator() {
                 </div>
               ) : (
                 <span className="font-bold text-primary">
-                  {formatBalance(balance || BigInt(0))}
+                  {formatBalance(displayBalance ?? BigInt(0))}
                 </span>
+              )}
+              {/* Refresh button always available */}
+              {!isBalanceLoading && (
+                <Button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  data-ocid="balance.secondary_button"
+                >
+                  <RefreshCw
+                    className={`w-3 h-3 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                </Button>
               )}
             </div>
           </div>
-
-          {/* Admin Wallet Balance - only show when admin status is confirmed */}
-          {isAdmin && adminWalletStatus.status === "success" && (
-            <div className="flex items-center justify-between gap-3 pt-2 border-t">
-              <span className="text-xs font-medium text-muted-foreground">
-                Admin Wallet:
-              </span>
-              <span className="text-xs font-bold text-primary">
-                {formatBalance(adminWalletStatus.balance)}
-              </span>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

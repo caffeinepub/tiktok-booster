@@ -428,12 +428,20 @@ export default function AdminPage() {
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <Button asChild className="w-full" variant="outline">
-                      <Link to="/admin/users">
-                        <Users className="w-4 h-4 mr-2" />
-                        View All Users
-                      </Link>
-                    </Button>
+                    <div className="space-y-2">
+                      <Button asChild className="w-full" variant="default">
+                        <Link to="/admin/distribute">
+                          <Send className="w-4 h-4 mr-2" />
+                          Distribute Balance
+                        </Link>
+                      </Button>
+                      <Button asChild className="w-full" variant="outline">
+                        <Link to="/admin/users">
+                          <Users className="w-4 h-4 mr-2" />
+                          View All Users
+                        </Link>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
