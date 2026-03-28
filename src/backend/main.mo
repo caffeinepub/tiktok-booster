@@ -127,6 +127,7 @@ actor {
     userProfiles.add(caller, profile);
   };
 
+  // New user onboarding: gives 25 PKR welcome bonus from admin wallet
   public shared ({ caller }) func onboarding() : async () {
     // Auto-register user in access control if not yet registered
     ensureRegistered(caller);
@@ -136,11 +137,14 @@ actor {
         Runtime.trap("User already exists in the database");
       };
       case (null) {
-        if (adminWallet < 10_000) {
-          Runtime.trap("Not enough funds in admin wallet! Internal admin wallet does not have enough funds to perform this transaction. Please contact a system administrator!");
+        let bonus : Nat = 25;
+        if (adminWallet >= bonus) {
+          adminWallet -= bonus;
+          userBalances.add(caller, bonus);
+        } else {
+          // If admin wallet is low, still register user with 0 balance
+          userBalances.add(caller, 0);
         };
-        adminWallet -= 10_000;
-        userBalances.add(caller, 10_000);
       };
     };
   };
@@ -190,6 +194,12 @@ actor {
   public shared ({ caller }) func addOrderWithWallet(url : Text, price : Nat, package : Text, packageId : Nat) : async Nat {
     // Auto-register user if not registered (handles state resets gracefully)
     ensureRegistered(caller);
+
+    // Ensure user has a balance entry
+    switch (userBalances.get(caller)) {
+      case (null) { userBalances.add(caller, 0) };
+      case (?_) {};
+    };
 
     let currentBalance = switch (userBalances.get(caller)) {
       case (?balance) { balance };

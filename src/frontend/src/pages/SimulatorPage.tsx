@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { clearPendingBoosts, getPendingBoosts } from "@/lib/pendingBoosts";
 import { Link } from "@tanstack/react-router";
 import {
   BarChart3,
@@ -10,6 +11,7 @@ import {
   Eye,
   Gauge,
   Heart,
+  Info,
   Link2,
   MessageCircle,
   RefreshCw,
@@ -18,7 +20,8 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -206,6 +209,63 @@ export default function SimulatorPage() {
     [DEFAULT_VIDEO_ID]: { ...DEFAULT_METRICS },
   });
 
+  // Apply any pending boosts from completed orders on mount
+  useEffect(() => {
+    const pendingBoosts = getPendingBoosts();
+    if (pendingBoosts.length === 0) return;
+
+    let lastVideoId = DEFAULT_VIDEO_ID;
+    let lastUrl = "";
+
+    for (const boost of pendingBoosts) {
+      const videoId = parseVideoId(boost.videoUrl);
+      dispatch({
+        type: "ENSURE",
+        videoId,
+        isDefault: videoId === DEFAULT_VIDEO_ID,
+      });
+      if (boost.views)
+        dispatch({
+          type: "ADD",
+          videoId,
+          metric: "views",
+          amount: boost.views,
+        });
+      if (boost.likes)
+        dispatch({
+          type: "ADD",
+          videoId,
+          metric: "likes",
+          amount: boost.likes,
+        });
+      if (boost.comments)
+        dispatch({
+          type: "ADD",
+          videoId,
+          metric: "comments",
+          amount: boost.comments,
+        });
+      if (boost.followers)
+        dispatch({
+          type: "ADD",
+          videoId,
+          metric: "followers",
+          amount: boost.followers,
+        });
+      lastVideoId = videoId;
+      lastUrl = boost.videoUrl;
+    }
+
+    setCurrentVideoId(lastVideoId);
+    setUrlInput(lastUrl);
+    clearPendingBoosts();
+
+    toast.success("Boost applied! 🚀", {
+      description:
+        "Your video stats have been automatically increased from your order.",
+    });
+  }, []);
+
   const metrics = videos[currentVideoId] ?? DEFAULT_METRICS;
 
   const handleAnalyze = useCallback(() => {
@@ -329,6 +389,17 @@ export default function SimulatorPage() {
             Paste a TikTok video link, view analytics, and simulate engagement
             boosts — all in real time.
           </motion.p>
+          {/* Auto-boost info banner */}
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-2 text-sm text-primary mx-auto"
+          >
+            <Info className="w-3.5 h-3.5 flex-shrink-0" />
+            After placing an order, your video stats will automatically increase
+            here within 1–2 minutes.
+          </motion.div>
         </section>
 
         {/* ── Hero Input Panel ── */}

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActor } from "@/hooks/useActor";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useCreateOrder } from "@/hooks/useOrders";
 import {
@@ -38,6 +39,7 @@ export default function HomePage() {
 
   const createOrderMutation = useCreateOrder();
   const { identity, login, isLoggingIn } = useInternetIdentity();
+  const { actor, isFetching: actorLoading } = useActor();
   const isAuthenticated = !!identity;
 
   const handlePackageSelect = (packageId: string) => {
@@ -293,15 +295,20 @@ export default function HomePage() {
 
                 <Button
                   type="submit"
+                  data-ocid="home.order.submit_button"
                   className="w-full text-lg py-6"
-                  disabled={createOrderMutation.isPending}
+                  disabled={
+                    createOrderMutation.isPending || actorLoading || !actor
+                  }
                 >
                   <Sparkles className="w-5 h-5 mr-2" />
-                  {createOrderMutation.isPending
-                    ? "Creating Order..."
-                    : isAuthenticated
-                      ? "Start Boosting"
-                      : "Log In to Boost"}
+                  {actorLoading
+                    ? "Initializing..."
+                    : createOrderMutation.isPending
+                      ? "Creating Order..."
+                      : isAuthenticated
+                        ? "Start Boosting"
+                        : "Log In to Boost"}
                 </Button>
               </form>
             </CardContent>

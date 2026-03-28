@@ -10,30 +10,64 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useActor } from "@/hooks/useActor";
 import { useGetOrderById } from "@/hooks/useOrders";
 import { formatOrderId, formatTimestamp } from "@/lib/format";
+import { packages } from "@/lib/packages";
+import { savePendingBoost } from "@/lib/pendingBoosts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, Clock, Package, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { OrderStatus } from "../backend";
 
 const AUTO_COMPLETE_SECONDS = 90;
+
+// Map package id to boost amounts based on packages.ts benefits
+function getBoostForPackage(packageName: string) {
+  const pkg = packages.find(
+    (p) =>
+      p.id.toLowerCase() === packageName.toLowerCase() ||
+      p.name.toLowerCase() === packageName.toLowerCase(),
+  );
+
+  if (pkg) {
+    // Parse views and likes from benefits array
+    const viewsBenefit = pkg.benefits.find((b) =>
+      b.toLowerCase().includes("view"),
+    );
+    const likesBenefit = pkg.benefits.find((b) =>
+      b.toLowerCase().includes("like"),
+    );
+    const views = viewsBenefit
+      ? Number.parseInt(viewsBenefit.replace(/[^0-9]/g, ""), 10)
+      : 1000;
+    const likes = likesBenefit
+      ? Number.parseInt(likesBenefit.replace(/[^0-9]/g, ""), 10)
+      : 100;
+    return {
+      views,
+      likes,
+      comments: Math.round(views / 50),
+      followers: Math.round(likes / 5),
+    };
+  }
+
+  // Fallback defaults
+  return { views: 5000, likes: 500, comments: 100, followers: 100 };
+}
 
 export default function StatusPage() {
   const { id } = useParams({ from: "/status/$id" });
   const { data: order, isLoading, isError } = useGetOrderById(id);
-  const { actor } = useActor();
   const queryClient = useQueryClient();
 
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [localCompleted, setLocalCompleted] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    if (localCompleted) return;
     if (!order || order.status !== "pending") {
-      // Clear timers if status changed away from pending
       if (timerRef.current) clearTimeout(timerRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
       setCountdown(null);
@@ -48,26 +82,29 @@ export default function StatusPage() {
     }, 1000);
 
     // Auto-complete after 90 seconds
-    timerRef.current = setTimeout(async () => {
+    timerRef.current = setTimeout(() => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       setCountdown(0);
-      try {
-        if (actor) {
-          await actor.updateOrderStatus(order.orderId, OrderStatus.completed);
-        }
-      } catch (_e) {
-        // Silently ignore — non-admins can't update status, that's fine
-      } finally {
-        // Always refetch to reflect latest status
-        queryClient.invalidateQueries({ queryKey: ["order", id] });
-      }
+
+      // Save boost info to localStorage so SimulatorPage can pick it up
+      const boost = getBoostForPackage(order.package);
+      savePendingBoost({
+        videoUrl: order.url,
+        ...boost,
+      });
+
+      // Mark as completed locally (users can't call updateOrderStatus)
+      setLocalCompleted(true);
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
     }, AUTO_COMPLETE_SECONDS * 1000);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [order, actor, id, queryClient]);
+  }, [order, id, queryClient, localCompleted]);
+
+  const effectiveStatus = localCompleted ? "completed" : order?.status;
 
   return (
     <div className="min-h-screen">
@@ -161,19 +198,21 @@ export default function StatusPage() {
                     </span>
                     <Badge
                       variant={
-                        order.status === "completed"
+                        effectiveStatus === "completed"
                           ? "default"
-                          : order.status === "pending"
+                          : effectiveStatus === "pending"
                             ? "secondary"
-                            : order.status === "cancelled" ||
-                                order.status === "failed"
+                            : effectiveStatus === "cancelled" ||
+                                effectiveStatus === "failed"
                               ? "destructive"
                               : "outline"
                       }
                       className="text-base font-semibold"
                     >
-                      {order.status.charAt(0).toUpperCase() +
-                        order.status.slice(1)}
+                      {effectiveStatus
+                        ? effectiveStatus.charAt(0).toUpperCase() +
+                          effectiveStatus.slice(1)
+                        : "Unknown"}
                     </Badge>
                   </div>
 
@@ -210,40 +249,52 @@ export default function StatusPage() {
                   </div>
                 </div>
 
-                {order.status === "pending" && countdown !== null && (
-                  <div
-                    className="bg-accent/50 rounded-lg p-4 space-y-3"
-                    data-ocid="order.loading_state"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">
-                        ⏳ Processing your order...
+                {!localCompleted &&
+                  order.status === "pending" &&
+                  countdown !== null && (
+                    <div
+                      className="bg-accent/50 rounded-lg p-4 space-y-3"
+                      data-ocid="order.loading_state"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">
+                          ⏳ Processing your order...
+                        </p>
+                        <span className="text-sm font-mono text-muted-foreground">
+                          {countdown}s remaining
+                        </span>
+                      </div>
+                      <Progress
+                        value={
+                          ((AUTO_COMPLETE_SECONDS - countdown) /
+                            AUTO_COMPLETE_SECONDS) *
+                          100
+                        }
+                        className="h-2"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Your boost will be activated automatically. Please wait.
                       </p>
-                      <span className="text-sm font-mono text-muted-foreground">
-                        {countdown}s remaining
-                      </span>
                     </div>
-                    <Progress
-                      value={
-                        ((AUTO_COMPLETE_SECONDS - countdown) /
-                          AUTO_COMPLETE_SECONDS) *
-                        100
-                      }
-                      className="h-2"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Your boost will be activated automatically. Please wait.
-                    </p>
-                  </div>
-                )}
+                  )}
 
-                {order.status === "completed" && (
+                {effectiveStatus === "completed" && (
                   <div
-                    className="bg-primary/10 rounded-lg p-4"
+                    className="bg-primary/10 rounded-lg p-4 space-y-2"
                     data-ocid="order.success_state"
                   >
                     <p className="text-sm font-medium text-primary">
                       ✓ Your order has been completed successfully!
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Visit the{" "}
+                      <Link
+                        to="/simulator"
+                        className="text-primary underline hover:no-underline"
+                      >
+                        Engagement Simulator
+                      </Link>{" "}
+                      to see your video stats updated.
                     </p>
                   </div>
                 )}
