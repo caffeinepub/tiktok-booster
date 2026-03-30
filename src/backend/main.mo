@@ -127,12 +127,42 @@ actor {
     return false;
   };
 
-  public query ({ caller }) func getAccountSummary() : async AccountSummary {
-    let byRole = switch (accessControlState.userRoles.get(caller)) {
-      case (?#admin) { true };
-      case (_) { false };
+  // FIXED: now shared (update call) so it auto-registers caller before returning.
+  // This eliminates the race condition where getAccountSummary was called before
+  // onboarding() completed, causing admin balance to show 0.
+  public shared ({ caller }) func getAccountSummary() : async AccountSummary {
+    // Anonymous callers get a safe empty response
+    if (caller.isAnonymous()) {
+      return {
+        caller;
+        role = "user";
+        userBalance = 0;
+        adminWalletBalance = 0;
+      };
     };
-    let isAdmin = byRole or isAdminByEmail(caller);
+
+    // Register user and set role atomically in this same call
+    ensureRegistered(caller);
+
+    // Also initialize balance if first time
+    switch (userBalances.get(caller)) {
+      case (null) {
+        if (isAdminUser(caller)) {
+          userBalances.add(caller, 0);
+        } else {
+          let bonus : Nat = 25;
+          if (adminWallet >= bonus) {
+            adminWallet -= bonus;
+            userBalances.add(caller, bonus);
+          } else {
+            userBalances.add(caller, 0);
+          };
+        };
+      };
+      case (?_) {};
+    };
+
+    let isAdmin = isAdminUser(caller);
     let roleString = if (isAdmin) "admin" else "user";
 
     let userBalance = switch (userBalances.get(caller)) {

@@ -3,6 +3,8 @@
  * Works with both hash-based and browser-based routing
  */
 
+const ADMIN_TOKEN_PARAM = "caffeineAdminToken";
+
 /**
  * Extracts a URL parameter from the current URL
  * Works with both query strings (?param=value) and hash-based routing (#/?param=value)
@@ -213,18 +215,21 @@ export function getSecretParameter(paramName: string): string | null {
   return getSecretFromHash(paramName);
 }
 
-const ADMIN_TOKEN_KEY = "caffeineAdminToken";
-
 /**
- * Checks if an admin token exists in the URL (hash or query params)
+ * Checks if the admin token is present in the current URL
+ * (either in the query string or in the hash fragment)
+ *
+ * @returns true if the admin token is in the URL, false otherwise
  */
 export function hasAdminTokenInUrl(): boolean {
-  return getUrlParameter(ADMIN_TOKEN_KEY) !== null;
+  return getUrlParameter(ADMIN_TOKEN_PARAM) !== null;
 }
 
 /**
- * Checks if an admin token exists in sessionStorage
+ * Checks if the admin token is stored in the current session (sessionStorage)
+ *
+ * @returns true if the admin token is in sessionStorage, false otherwise
  */
 export function hasAdminTokenInSession(): boolean {
-  return getSessionParameter(ADMIN_TOKEN_KEY) !== null;
+  return getSessionParameter(ADMIN_TOKEN_PARAM) !== null;
 }
